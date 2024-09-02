@@ -64,3 +64,10 @@ description='''${mod_description}'''
    versionRange="${minecraft_version_range}"
    ordering="NONE"
    side="BOTH"
+
+[[dependencies."${mod_id}"]]
+   modId="computercraft"
+   mandatory=true
+   versionRange = "[1.100.0,)"
+   ordering = "NONE"
+   side = "BOTH"
