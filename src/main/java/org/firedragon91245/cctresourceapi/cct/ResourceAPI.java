@@ -44,7 +44,7 @@ public class ResourceAPI implements ILuaAPI {
         BlockModelInfo modelInfo = new BlockModelInfo(location);
         if (location.getNamespace().equals("minecraft")) {
             String blockid = location.getPath();
-            Optional<String> stateModelJson = loadBunbledFileText("bundled_resources/minecraft/blockstates/" + blockid + ".json");
+            Optional<String> stateModelJson = loadBundledFileText("bundled_resources/minecraft/blockstates/" + blockid + ".json");
             if (stateModelJson.isPresent()) {
                 BlockStateModel stateModel = CCT_Resource_API.GSON.fromJson(stateModelJson.get(), BlockStateModel.class);
                 modelInfo.statefullModel = true;
@@ -65,8 +65,6 @@ public class ResourceAPI implements ILuaAPI {
                     newModels.clear();
                     modelInfo.models.forEach((key, value) -> {
                         if (value != null && value.parent != null) {
-                            // FIXME: Inventigate why there are model enties like "block/cube" without namespace my error? did i somewere trhow minecraft: away?
-                            // FIXME: Seems these are "integrated" models but these still exist as files inside the MC bundled resources, mabe just add extra handling if no namespce asumee minecraft:
                             if (modelInfo.models.containsKey(value.parent) || newModels.containsKey(value.parent))
                                 return;
                             BlockModel parentModel = loadBlockModelByLocation(value.parent);
@@ -78,7 +76,7 @@ public class ResourceAPI implements ILuaAPI {
 
                 return modelInfo;
             } else {
-                Optional<String> modelJson = loadBunbledFileText("bundled_resources/minecraft/models/block/" + blockid + ".json");
+                Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/block/" + blockid + ".json");
                 if (modelJson.isPresent()) {
                     BlockModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), BlockModel.class);
                     modelInfo.statefullModel = false;
@@ -98,9 +96,13 @@ public class ResourceAPI implements ILuaAPI {
     }
 
     private static BlockModel loadBlockModelByLocation(String model) {
+        if(!model.contains(":"))
+        {
+            model = "minecraft:" + model;
+        }
         if (model.startsWith("minecraft:")) {
             String modelid = model.substring(10);
-            Optional<String> modelJson = loadBunbledFileText("bundled_resources/minecraft/models/" + modelid + ".json");
+            Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/" + modelid + ".json");
             return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, BlockModel.class)).orElse(null);
         } else {
             // TODO: Implement non Bundled Resources
@@ -124,7 +126,7 @@ public class ResourceAPI implements ILuaAPI {
         return file.map(ModFile::getFilePath).map(Path::toFile);
     }
 
-    private static Optional<String> loadBunbledFileText(String location) {
+    private static Optional<String> loadBundledFileText(String location) {
         try (InputStream modelStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(location)) {
             if (modelStream != null) {
                 StringBuilder sb = new StringBuilder();
@@ -212,48 +214,23 @@ public class ResourceAPI implements ILuaAPI {
         if (flags.contains("t")) { // t = tags
             blockInfo.put("tags", Objects.requireNonNull(b).getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
         } else if (flags.contains("m")) { // m = moodels + textures
-            getBlockModelInfo(b, blockInfo);
+            blockInfo = getBlockModelInfo(b, blockInfo);
         }
 
         return blockInfo;
     }
 
-    private void getBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
+    private HashMap<String, Object> getBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
         ResourceLocation blockId = b.getRegistryName();
         if (blockId == null)
-            return;
+            return blockInfo;
 
         BlockModelInfo model = loadBlockModelByBlockId(blockId);
         if (model == null)
-            return;
+            return blockInfo;
 
-        HashMap<String, Object> modelInfo = new HashMap<>();
-        modelInfo.put("statefull", model.statefullModel);
-        if (model.statefullModel) {
-            HashMap<String, Object> states = new HashMap<>();
-            model.modelState.variants.forEach((key, value) -> {
-                value.ifOneOrElse(one -> {
-                    HashMap<String, Object> state = new HashMap<>();
-                    state.put("model", one.model);
-                    one.properties.forEach((k, v) -> state.put(k, v.toString()));
-                    states.put(key, state);
-                }, more -> {
-                    List<HashMap<String, Object>> stateList = more.stream().map(variant -> {
-                        HashMap<String, Object> state = new HashMap<>();
-                        state.put("model", variant.model);
-                        variant.properties.forEach((k, v) -> state.put(k, v.toString()));
-                        return state;
-                    }).collect(Collectors.toList());
-                    states.put(key, stateList);
-                });
-            });
-            modelInfo.put("states", states);
-        } else {
-            HashMap<String, Object> rootModel = new HashMap<>();
-            modelInfo.put("rootModel", rootModel);
-            rootModel.put("parent", model.rootModel.parent);
-            rootModel.put("textures", model.rootModel.textures);
-        }
+        blockInfo.put("model", model.asHashMap());
+        return blockInfo;
     }
 
     @Override

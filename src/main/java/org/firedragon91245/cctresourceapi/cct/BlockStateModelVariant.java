@@ -12,4 +12,11 @@ public class BlockStateModelVariant {
     public BlockStateModelVariant() {
         this.properties = new HashMap<>();
     }
+
+    public HashMap<String, Object> asHashMap() {
+        HashMap<String, Object> map = new HashMap<>();
+        map.put("model", model);
+        properties.forEach((key, value) -> map.put(key, value.toString()));
+        return map;
+    }
 }

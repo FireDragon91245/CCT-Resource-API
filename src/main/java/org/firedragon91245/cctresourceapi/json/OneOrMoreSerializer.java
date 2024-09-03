@@ -2,7 +2,6 @@ package org.firedragon91245.cctresourceapi.json;
 
 import com.google.gson.*;
 import org.firedragon91245.cctresourceapi.OneOrMore;
-import sun.reflect.generics.reflectiveObjects.ParameterizedTypeImpl;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
