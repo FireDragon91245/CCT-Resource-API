@@ -15,11 +15,13 @@ import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class ResourceAPI implements ILuaAPI {
     private static <T> T defaultIfNull(T value, T defaultValue) {
@@ -46,53 +48,118 @@ public class ResourceAPI implements ILuaAPI {
             String blockid = location.getPath();
             Optional<String> stateModelJson = loadBundledFileText("bundled_resources/minecraft/blockstates/" + blockid + ".json");
             if (stateModelJson.isPresent()) {
-                BlockStateModel stateModel = CCT_Resource_API.GSON.fromJson(stateModelJson.get(), BlockStateModel.class);
-                modelInfo.statefullModel = true;
-                modelInfo.modelState = stateModel;
-                modelInfo.modelState.variants.forEach((key, value) -> {
-                    modelInfo.models = new HashMap<>();
-                    value.ifOneOrElse(
-                            one -> modelInfo.models.put(one.model, loadBlockModelByLocation(one.model)),
-                            more -> {
-                                for (BlockStateModelVariant variant : more) {
-                                    modelInfo.models.put(variant.model, loadBlockModelByLocation(variant.model));
-                                }
-                            });
-                });
-
-                HashMap<String, BlockModel> newModels = new HashMap<>();
-                do {
-                    newModels.clear();
-                    modelInfo.models.forEach((key, value) -> {
-                        if (value != null && value.parent != null) {
-                            if (modelInfo.models.containsKey(value.parent) || newModels.containsKey(value.parent))
-                                return;
-                            BlockModel parentModel = loadBlockModelByLocation(value.parent);
-                            newModels.put(value.parent, parentModel);
-                        }
-                    });
-                    modelInfo.models.putAll(newModels);
-                } while (!newModels.isEmpty());
-
-                return modelInfo;
+                return loadStatefulBlockModelInfo(modelInfo, stateModelJson.get());
             } else {
                 Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/block/" + blockid + ".json");
                 if (modelJson.isPresent()) {
                     BlockModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), BlockModel.class);
                     modelInfo.statefullModel = false;
                     modelInfo.rootModel = model;
+                    modelInfo.models.put("minecraft:block/" + blockid, model);
 
-                    // TODO: implement parent models recusivly
-
+                    modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
                     return modelInfo;
                 }
                 return null;
             }
-
         } else {
-            // TODO: Implement non Bundled Resources
+            File f = getModJarFromModId(location.getNamespace()).orElse(null);
+            if (f == null)
+                return null;
+
+            URL jarUrl = null;
+            try {
+                jarUrl = new URL("jar:file:" + f.getAbsolutePath() + "!/");
+            } catch (MalformedURLException ignored) {
+            }
+            if(jarUrl == null)
+                return null;
+
+            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
+            {
+                Optional<String> stateModelJson = loadFileText(loader, "assets/" + location.getNamespace() + "/blockstates/" + location.getPath() + ".json");
+                if (stateModelJson.isPresent()) {
+                    return loadStatefulBlockModelInfo(modelInfo, stateModelJson.get());
+                } else {
+                    Optional<String> modelJson = loadFileText(loader, "assets/" + location.getNamespace() + "/models/block/" + location.getPath() + ".json");
+                    if (modelJson.isPresent()) {
+                        BlockModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), BlockModel.class);
+                        modelInfo.statefullModel = false;
+                        modelInfo.rootModel = model;
+                        modelInfo.models.put(location.getNamespace() + ":block/" + location.getPath(), model);
+
+                        modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
+                        return modelInfo;
+                    }
+                }
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
             return null;
         }
+    }
+
+    private static HashMap<String, BlockModel> getParentModelsRecursive(BlockModelInfo modelInfo) {
+        HashMap<String, BlockModel> newModelsCollector = new HashMap<>();
+        HashMap<String, BlockModel> newModels = new HashMap<>();
+        do {
+            newModels.clear();
+            modelInfo.models.forEach((key, value) -> {
+                if (value != null && value.parent != null) {
+                    if (modelInfo.models.containsKey(value.parent) || newModels.containsKey(value.parent) || newModelsCollector.containsKey(value.parent))
+                        return;
+                    BlockModel parentModel = loadBlockModelByLocation(value.parent);
+                    newModels.put(value.parent, parentModel);
+                }
+            });
+            newModelsCollector.putAll(newModels);
+        } while (!newModels.isEmpty());
+
+        return newModelsCollector;
+    }
+
+    private static BlockModelInfo loadStatefulBlockModelInfo(BlockModelInfo modelInfo, String stateModelJson) {
+        BlockStateModel stateModel = CCT_Resource_API.GSON.fromJson(stateModelJson, BlockStateModel.class);
+        modelInfo.statefullModel = true;
+        modelInfo.modelState = stateModel;
+        modelInfo.modelState.variants.forEach((key, value) -> {
+            if(value == null)
+                return;
+            modelInfo.models = new HashMap<>();
+            value.ifOneOrElse(
+                    one -> modelInfo.models.put(one.model, loadBlockModelByLocation(one.model)),
+                    more -> {
+                        for (BlockStateModelVariant variant : more) {
+                            modelInfo.models.put(variant.model, loadBlockModelByLocation(variant.model));
+                        }
+                    });
+        });
+
+        modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
+        return modelInfo;
+    }
+
+    private static Optional<String> loadFileText(ClassLoader loader, String location) {
+        try (InputStream modelStream = loader.getResourceAsStream(location)) {
+            return readInStreamAll(modelStream);
+        } catch (IOException ignored) {
+        }
+        return Optional.empty();
+    }
+
+    @Nonnull
+    private static Optional<String> readInStreamAll(InputStream modelStream) throws IOException {
+        if (modelStream != null) {
+            StringBuilder sb = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(modelStream))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+            }
+            return Optional.of(sb.toString());
+        }
+        return Optional.empty();
     }
 
     private static BlockModel loadBlockModelByLocation(String model) {
@@ -105,7 +172,26 @@ public class ResourceAPI implements ILuaAPI {
             Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/" + modelid + ".json");
             return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, BlockModel.class)).orElse(null);
         } else {
-            // TODO: Implement non Bundled Resources
+            File f = getModJarFromModId(model.split(":")[0]).orElse(null);
+            if (f == null)
+                return null;
+
+            URL jarUrl = null;
+            try {
+                jarUrl = new URL("jar:file:" + f.getAbsolutePath() + "!/");
+            } catch (MalformedURLException ignored) {
+            }
+
+            if(jarUrl == null)
+                return null;
+
+            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
+            {
+                Optional<String> modelJson = loadFileText(loader, "assets/" + model.split(":")[0] + "/models/" + model.split(":")[1] + ".json");
+                return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, BlockModel.class)).orElse(null);
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
             return null;
         }
     }
@@ -128,22 +214,13 @@ public class ResourceAPI implements ILuaAPI {
 
     private static Optional<String> loadBundledFileText(String location) {
         try (InputStream modelStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(location)) {
-            if (modelStream != null) {
-                StringBuilder sb = new StringBuilder();
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(modelStream))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        sb.append(line);
-                    }
-                }
-                return Optional.of(sb.toString());
-            }
+            return readInStreamAll(modelStream);
         } catch (IOException ignored) {
         }
         return Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "unused"})
     @LuaFunction
     public String[] getBlockIds(@Nullable Object filter) {
         if (filter instanceof String) {
@@ -171,7 +248,7 @@ public class ResourceAPI implements ILuaAPI {
                 .toArray(String[]::new);
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "unused"})
     @LuaFunction
     public String[] getItemIds(@Nullable Object filter) {
         if (filter instanceof String) {
@@ -199,6 +276,7 @@ public class ResourceAPI implements ILuaAPI {
                 .toArray(String[]::new);
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     public HashMap<String, Object> getBlockInfo(String blockId, String flags) {
         if (blockId.isEmpty())
@@ -213,24 +291,24 @@ public class ResourceAPI implements ILuaAPI {
         blockInfo.put("blockid", blockLocation.toString());
         if (flags.contains("t")) { // t = tags
             blockInfo.put("tags", Objects.requireNonNull(b).getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
-        } else if (flags.contains("m")) { // m = moodels + textures
-            blockInfo = getBlockModelInfo(b, blockInfo);
+        }
+        if (flags.contains("m")) { // m = moodels + textures
+            loadStatefulBlockModelInfo(Objects.requireNonNull(b), blockInfo);
         }
 
         return blockInfo;
     }
 
-    private HashMap<String, Object> getBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
+    private void loadStatefulBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
         ResourceLocation blockId = b.getRegistryName();
         if (blockId == null)
-            return blockInfo;
+            return;
 
         BlockModelInfo model = loadBlockModelByBlockId(blockId);
         if (model == null)
-            return blockInfo;
+            return;
 
         blockInfo.put("model", model.asHashMap());
-        return blockInfo;
     }
 
     @Override

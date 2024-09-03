@@ -40,9 +40,8 @@ public class OneOrMoreSerializer implements JsonDeserializer<OneOrMore<?>>, Json
                 }
             }
         } else if (jsonElement.isJsonObject()) {
-            Type supper = type.getClass().getGenericSuperclass();
-            if (supper instanceof ParameterizedType) {
-                ParameterizedType genericType = (ParameterizedType) supper;
+            if (type instanceof ParameterizedType) {
+                ParameterizedType genericType = (ParameterizedType) type;
                 Object result = jsonDeserializationContext.deserialize(jsonElement, genericType.getActualTypeArguments()[0]);
                 return OneOrMore.fromOne(result);
             }
