@@ -1,5 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import com.google.common.cache.AbstractCache;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.HashMap;
@@ -10,10 +11,12 @@ public class BlockModelInfo {
     public BlockStateModel modelState;
     public BlockModel rootModel;
     public HashMap<String, BlockModel> models;
+    public HashMap<String, ModelTexture> textures;
 
     public BlockModelInfo(ResourceLocation blockId) {
         this.blockId = blockId;
         this.models = new HashMap<>();
+        this.textures = new HashMap<>();
     }
 
     public HashMap<String, Object> asHashMap() {
@@ -29,6 +32,12 @@ public class BlockModelInfo {
             if(models.get(key) != null)
                 modelsMap.put(key, models.get(key).asHashMap());
         }
+        HashMap<String, Object> texturesMap = new HashMap<>();
+        for (String key : textures.keySet()) {
+            if(textures.get(key) != null)
+                texturesMap.put(key, textures.get(key).asHashMap());
+        }
+        map.put("textures", texturesMap);
         map.put("models", modelsMap);
         return map;
     }

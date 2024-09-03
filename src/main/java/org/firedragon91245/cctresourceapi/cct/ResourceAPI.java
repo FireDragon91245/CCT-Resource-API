@@ -14,6 +14,10 @@ import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -22,6 +26,10 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+// FIXME: when doing "a = resourceapi.getBlockInfo("computercraft:computer_advanced", "m")"
+// FIXME: a.model.models does not contain all models listed in the blockstate file
+// FIXME: expected computer_advanced_on, computer_advanced_off, computer_advanced_blinking got only computer_advanced_blinking
 
 public class ResourceAPI implements ILuaAPI {
     private static <T> T defaultIfNull(T value, T defaultValue) {
@@ -42,26 +50,30 @@ public class ResourceAPI implements ILuaAPI {
     }
 
     @Nullable
-    private static BlockModelInfo loadBlockModelByBlockId(@Nonnull ResourceLocation location) {
+    private static BlockModelInfo loadBlockModelInfoByBlockId(@Nonnull ResourceLocation location) {
         BlockModelInfo modelInfo = new BlockModelInfo(location);
         if (location.getNamespace().equals("minecraft")) {
-            String blockid = location.getPath();
-            Optional<String> stateModelJson = loadBundledFileText("bundled_resources/minecraft/blockstates/" + blockid + ".json");
+            String blockId = location.getPath();
+            Optional<String> stateModelJson = loadBundledFileText("bundled_resources/minecraft/blockstates/" + blockId + ".json");
             if (stateModelJson.isPresent()) {
                 return loadStatefulBlockModelInfo(modelInfo, stateModelJson.get());
             } else {
-                Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/block/" + blockid + ".json");
+                Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/block/" + blockId + ".json");
                 if (modelJson.isPresent()) {
                     BlockModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), BlockModel.class);
                     modelInfo.statefullModel = false;
                     modelInfo.rootModel = model;
-                    modelInfo.models.put("minecraft:block/" + blockid, model);
+                    modelInfo.models.put("minecraft:block/" + blockId, model);
 
                     modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
+                    loadBlockModelTextures(modelInfo);
                     return modelInfo;
                 }
-                return null;
+                else {
+                    return null;
+                }
             }
+
         } else {
             File f = getModJarFromModId(location.getNamespace()).orElse(null);
             if (f == null)
@@ -89,14 +101,33 @@ public class ResourceAPI implements ILuaAPI {
                         modelInfo.models.put(location.getNamespace() + ":block/" + location.getPath(), model);
 
                         modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
+                        loadBlockModelTextures(modelInfo);
                         return modelInfo;
                     }
                 }
             } catch (IOException e) {
                 CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
             }
-            return null;
+
         }
+        return null;
+    }
+
+    private static void loadBlockModelTextures(BlockModelInfo modelInfo) {
+        modelInfo.models.forEach((key, value) -> {
+            if (value != null) {
+                if (value.textures != null) {
+                    value.textures.forEach((key1, value1) -> {
+                        if (value1 != null && !value1.startsWith("#")) {
+                            if(modelInfo.textures.containsKey(value1))
+                                return;
+                            Optional<ModelTexture> texture = loadBlockTextureByLocation(value1);
+                            texture.ifPresent(modelTexture -> modelInfo.textures.put(value1, modelTexture));
+                        }
+                    });
+                }
+            }
+        });
     }
 
     private static HashMap<String, BlockModel> getParentModelsRecursive(BlockModelInfo modelInfo) {
@@ -136,6 +167,7 @@ public class ResourceAPI implements ILuaAPI {
         });
 
         modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
+        loadBlockModelTextures(modelInfo);
         return modelInfo;
     }
 
@@ -145,6 +177,51 @@ public class ResourceAPI implements ILuaAPI {
         } catch (IOException ignored) {
         }
         return Optional.empty();
+    }
+
+    private static Optional<ModelTexture> loadFileImage(ClassLoader loader, String location) {
+        try (InputStream modelStream = loader.getResourceAsStream(location)) {
+            return readInStreamImage(modelStream);
+        } catch (IOException ignored) {
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<ModelTexture> loadFileBundledImage(String location) {
+        try (InputStream modelStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(location)) {
+            return readInStreamImage(modelStream);
+        } catch (IOException ignored) {
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<ModelTexture> readInStreamImage(InputStream modelStream) {
+        if (modelStream == null) {
+            return Optional.empty();
+        }
+
+        try (ImageInputStream imageStream = ImageIO.createImageInputStream(modelStream)) {
+            Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(imageStream);
+            if (!imageReaders.hasNext()) {
+                return Optional.empty();
+            }
+
+            ImageReader reader = imageReaders.next();
+            reader.setInput(imageStream);
+            String formatName = reader.getFormatName();
+
+            BufferedImage image = reader.read(0, reader.getDefaultReadParam());
+
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            ImageIO.write(image, formatName, byteArrayOutputStream);
+            byte[] imageBytes = byteArrayOutputStream.toByteArray();
+
+            ModelTexture modelTexture = new ModelTexture(formatName, image, imageBytes);
+            return Optional.of(modelTexture);
+        } catch (IOException e) {
+            CCT_Resource_API.LOGGER.error("Failed to read image", e);
+            return Optional.empty();
+        }
     }
 
     @Nonnull
@@ -160,6 +237,39 @@ public class ResourceAPI implements ILuaAPI {
             return Optional.of(sb.toString());
         }
         return Optional.empty();
+    }
+
+    private static Optional<ModelTexture> loadBlockTextureByLocation(String texture)
+    {
+        if(!texture.contains(":"))
+        {
+            texture = "minecraft:" + texture;
+        }
+        if (texture.startsWith("minecraft:")) {
+            String textureId = texture.substring(10);
+            return loadFileBundledImage("bundled_resources/minecraft/textures/" + textureId + ".png");
+        } else {
+            File f = getModJarFromModId(texture.split(":")[0]).orElse(null);
+            if (f == null)
+                return Optional.empty();
+
+            URL jarUrl = null;
+            try {
+                jarUrl = new URL("jar:file:" + f.getAbsolutePath() + "!/");
+            } catch (MalformedURLException ignored) {
+            }
+
+            if(jarUrl == null)
+                return Optional.empty();
+
+            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
+            {
+                return loadFileImage(loader, "assets/" + texture.split(":")[0] + "/textures/" + texture.split(":")[1] + ".png");
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+            return Optional.empty();
+        }
     }
 
     private static BlockModel loadBlockModelByLocation(String model) {
@@ -293,18 +403,18 @@ public class ResourceAPI implements ILuaAPI {
             blockInfo.put("tags", Objects.requireNonNull(b).getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
         }
         if (flags.contains("m")) { // m = moodels + textures
-            loadStatefulBlockModelInfo(Objects.requireNonNull(b), blockInfo);
+            loadBlockModelInfo(Objects.requireNonNull(b), blockInfo);
         }
 
         return blockInfo;
     }
 
-    private void loadStatefulBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
+    private void loadBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
         ResourceLocation blockId = b.getRegistryName();
         if (blockId == null)
             return;
 
-        BlockModelInfo model = loadBlockModelByBlockId(blockId);
+        BlockModelInfo model = loadBlockModelInfoByBlockId(blockId);
         if (model == null)
             return;
 
