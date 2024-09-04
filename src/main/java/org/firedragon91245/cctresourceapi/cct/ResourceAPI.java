@@ -27,10 +27,6 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// FIXME: when doing "a = resourceapi.getBlockInfo("computercraft:computer_advanced", "m")"
-// FIXME: a.model.models does not contain all models listed in the blockstate file
-// FIXME: expected computer_advanced_on, computer_advanced_off, computer_advanced_blinking got only computer_advanced_blinking
-
 public class ResourceAPI implements ILuaAPI {
     private static <T> T defaultIfNull(T value, T defaultValue) {
         return value != null ? value : defaultValue;
@@ -156,12 +152,20 @@ public class ResourceAPI implements ILuaAPI {
         modelInfo.modelState.variants.forEach((key, value) -> {
             if(value == null)
                 return;
-            modelInfo.models = new HashMap<>();
             value.ifOneOrElse(
-                    one -> modelInfo.models.put(one.model, loadBlockModelByLocation(one.model)),
+                    one ->
+                    {
+                        if(modelInfo.models.containsKey(one.model))
+                            return;
+                        BlockModel model = loadBlockModelByLocation(one.model);
+                        modelInfo.models.put(one.model, model);
+                    },
                     more -> {
                         for (BlockStateModelVariant variant : more) {
-                            modelInfo.models.put(variant.model, loadBlockModelByLocation(variant.model));
+                            if(modelInfo.models.containsKey(variant.model))
+                                continue;
+                            BlockModel model = loadBlockModelByLocation(variant.model);
+                            modelInfo.models.put(variant.model, model);
                         }
                     });
         });
