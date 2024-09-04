@@ -1,14 +1,24 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import com.mojang.serialization.JsonOps;
 import dan200.computercraft.api.lua.IComputerSystem;
 import dan200.computercraft.api.lua.ILuaAPI;
 import dan200.computercraft.api.lua.ILuaAPIFactory;
 import dan200.computercraft.api.lua.LuaFunction;
+import it.unimi.dsi.fastutil.Hash;
 import net.minecraft.block.Block;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.crafting.IRecipe;
+import net.minecraft.item.crafting.Ingredient;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.INBT;
+import net.minecraft.nbt.ListNBT;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
 import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
+import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 
@@ -24,8 +34,11 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ResourceAPI implements ILuaAPI {
     private static <T> T defaultIfNull(T value, T defaultValue) {
@@ -332,6 +345,234 @@ public class ResourceAPI implements ILuaAPI {
         } catch (IOException ignored) {
         }
         return Optional.empty();
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    @LuaFunction
+    public String[] getRecipeIds(@Nullable Object filter) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        Stream<ResourceLocation> recipies = server.getRecipeManager().getRecipeIds();
+        if (filter instanceof String) {
+            return recipies.map(ResourceLocation::toString)
+                    .filter(str -> !str.isEmpty() && str.contains((String) filter))
+                    .toArray(String[]::new);
+        } else if (filter instanceof HashMap) {
+            HashMap<String, Object> filterMap = (HashMap<String, Object>) filter;
+            String modid = (String) filterMap.getOrDefault("modid", ".*");
+            String recipeid = (String) filterMap.getOrDefault("recipeid", ".*");
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern recipeidRegex = Pattern.compile(recipeid);
+
+            return recipies.map(ResourceLocation::toString)
+                    .filter(str -> filterIds(str, modidRegex, recipeidRegex))
+                    .toArray(String[]::new);
+        }
+        return recipies.map(ResourceLocation::toString)
+                .filter(str -> !str.isEmpty())
+                .toArray(String[]::new);
+    }
+
+    private static HashMap<String, Object> ingredientAsHashMap(Ingredient ingredient)
+    {
+        HashMap<String, Object> ingredientInfo = new HashMap<>();
+        ingredientInfo.put("empty", ingredient.isEmpty());
+        ingredientInfo.put("simple", ingredient.isSimple());
+        ingredientInfo.put("vanilla", ingredient.isVanilla());
+        List<HashMap<String, Object>> items = Arrays.stream(ingredient.getItems()).map(ResourceAPI::itemStackAsHashMap).collect(Collectors.toList());
+        ListIterator<HashMap<String, Object>> itemIter = items.listIterator();
+        HashMap<Integer, Object> itemsMap = new HashMap<>();
+        while(itemIter.hasNext())
+        {
+            itemsMap.put(itemIter.nextIndex() + 1, itemIter.next());
+        }
+        ingredientInfo.put("items", itemsMap);
+        return ingredientInfo;
+    }
+
+    private static HashMap<Integer, Object> ingredientsAsHashMap(List<Ingredient> ingredients)
+    {
+        HashMap<Integer, Object> ingredientsInfo = new HashMap<>();
+        for (int i = 0; i < ingredients.size(); i++) {
+            ingredientsInfo.put(i + 1, ingredientAsHashMap(ingredients.get(i)));
+        }
+        return ingredientsInfo;
+    }
+
+    private static Map<String, Object> convertNBTtoMap(@Nullable CompoundNBT compoundNBT) {
+        if(compoundNBT == null)
+            return null;
+        Map<String, Object> map = new HashMap<>();
+
+        for (String key : compoundNBT.getAllKeys()) {
+            INBT value = compoundNBT.get(key);
+            if(value == null)
+                continue;
+
+            if (value instanceof CompoundNBT) {
+                map.put(key, convertNBTtoMap((CompoundNBT) value));
+            } else if (value instanceof ListNBT) {
+                map.put(key, convertListNBTtoList((ListNBT) value));
+            } else {
+                map.put(key, value.getAsString());
+            }
+        }
+
+        return map;
+    }
+
+    private static List<Object> convertListNBTtoList(ListNBT listNBT) {
+        List<Object> list = new ArrayList<>();
+
+        for (INBT element : listNBT) {
+            if (element instanceof CompoundNBT) {
+                list.add(convertNBTtoMap((CompoundNBT) element));
+            } else if (element instanceof ListNBT) {
+                list.add(convertListNBTtoList((ListNBT) element));
+            } else {
+                list.add(element.getAsString());
+            }
+        }
+
+        return list;
+    }
+
+    public static HashMap<String, Object> itemStackAsHashMap(ItemStack item)
+    {
+        HashMap<String, Object> itemStackInfo = new HashMap<>();
+        itemStackInfo.put("item", Objects.requireNonNull(item.getItem().getRegistryName()).toString());
+        itemStackInfo.put("count", item.getCount());
+        itemStackInfo.put("nbt", convertNBTtoMap(item.getTag()));
+        return itemStackInfo;
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    @LuaFunction
+    public HashMap<String, Object> getRecipeInfo(Object filter)
+    {
+        if(filter == null)
+            return null;
+
+        HashMap<String, Object> recipeInfo = new HashMap<>();
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if(filter instanceof String)
+        {
+            String recipeId = (String) filter;
+            ResourceLocation recipeLocation = new ResourceLocation(recipeId);
+            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
+            recipes.stream().filter(recipe -> recipe.getId().equals(recipeLocation)).findFirst().ifPresent(recipe -> {
+                recipeInfo.put("recipeid", recipe.getId().toString());
+                recipeInfo.put("type", recipe.getType().toString());
+                recipeInfo.put("group", recipe.getGroup());
+                recipeInfo.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
+                recipeInfo.put("result", itemStackAsHashMap(recipe.getResultItem()));
+            });
+            return recipeInfo;
+        }
+        else if(filter instanceof Map)
+        {
+            Map<String, Object> filterMap = (Map<String, Object>) filter;
+
+            Predicate<IRecipe<?>> simpleFilter = assembleRecipeSimpleFilter(filterMap);
+            Predicate<IRecipe<?>> resultFilter = assembleRecipeResultFilter(filterMap);
+            Predicate<IRecipe<?>> ingredientFilter = assembleRecipeIngredientFilter(filterMap);
+
+            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
+            recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst().ifPresent(recipe -> {
+                recipeInfo.put("recipeid", recipe.getId().toString());
+                recipeInfo.put("type", recipe.getType().toString());
+                recipeInfo.put("group", recipe.getGroup());
+                recipeInfo.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
+                recipeInfo.put("result", itemStackAsHashMap(recipe.getResultItem()));
+            });
+
+            return recipeInfo;
+        }
+        return null;
+    }
+
+    private Predicate<IRecipe<?>> assembleRecipeIngredientFilter(Map<String, Object> filterMap) {
+        if(!filterMap.containsKey("ingredients"))
+            return recipe -> true;
+
+        // TODO: implement ingredient filter
+        // TODO: also modify assembleRecipeResultFilter to use the same pattern (extract common parts for example matchItemStack)
+        // TODO: use hirarchy of method matchIngedients -> matchIngredient -> matchItemStacks -> matchItemStack -> matchNBT
+        // TODO: at any stage allow String as contains filter itemid + modid as regex filter and count if posible
+        // TODO: note at matchIngedients, matchIngedient and matchItemStacks if modid and itemid or z.b. "minecraft:stone" = 1 are present acumulate items of childs so {ingidients={"minecraft:stone"=3}} acumulate all ingidents item stacks and filter recipees that only take in a total of 3 stone
+        return recipe -> true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Predicate<IRecipe<?>> assembleRecipeResultFilter(Map<String, Object> filterMap) {
+        if(!filterMap.containsKey("result"))
+            return recipe -> true;
+
+        Object resultFilter = filterMap.get("result");
+        if(resultFilter instanceof String)
+        {
+            String resultId = (String) resultFilter;
+            ResourceLocation resultLocation = new ResourceLocation(resultId);
+            return recipe -> Objects.equals(recipe.getResultItem().getItem().getRegistryName(), resultLocation);
+        } else if (resultFilter instanceof Map) {
+            Map<String, Object> resultFilterMap = (Map<String, Object>) resultFilter;
+
+            String resultModId = (String) resultFilterMap.getOrDefault("modid", ".*");
+            String resultItemid = (String) resultFilterMap.getOrDefault("itemid", ".*");
+
+            int resultCount = (int) resultFilterMap.getOrDefault("count", -1);
+            Object resultNBT = resultFilterMap.getOrDefault("nbt", new HashMap<>());
+            if(resultNBT instanceof Map) {
+                Map<String, Object> resultNBTMap = (Map<String, Object>) resultNBT;
+
+                Pattern resultModidRegex = Pattern.compile(resultModId);
+                Pattern resultItemidRegex = Pattern.compile(resultItemid);
+
+                return recipe -> {
+                    ItemStack result = recipe.getResultItem();
+                    if (result == null)
+                        return false;
+                    if (!resultModidRegex.matcher(Objects.requireNonNull(result.getItem().getRegistryName()).getNamespace()).matches() || !resultItemidRegex.matcher(Objects.requireNonNull(result.getItem().getRegistryName()).getPath()).matches())
+                        return false;
+                    if (resultCount != -1 && result.getCount() != resultCount)
+                        return false;
+                    if (!resultNBTMap.isEmpty()) {
+                        CompoundNBT nbt = result.getTag();
+                        if (nbt == null)
+                            return false;
+                        for (String key : resultNBTMap.keySet()) {
+                            if (!resultNBTMap.get(key).equals(nbt.get(key)))
+                                return false;
+                        }
+                    }
+                    return true;
+                };
+            }
+        }
+        return recipe -> true;
+    }
+
+    private Predicate<IRecipe<?>> assembleRecipeSimpleFilter(Map<String, Object> filterMap) {
+        String recipeType = (String) filterMap.getOrDefault("type", ".*");
+        String recipeGroup = (String) filterMap.getOrDefault("group", ".*");
+        String modid = (String) filterMap.getOrDefault("modid", ".*");
+        String recipeId = (String) filterMap.getOrDefault("recipeid", ".*");
+
+        Pattern recipeTypeRegex = Pattern.compile(recipeType);
+        Pattern recipeGroupRegex = Pattern.compile(recipeGroup);
+        Pattern modidRegex = Pattern.compile(modid);
+        Pattern recipeIdRegex = Pattern.compile(recipeId);
+
+        return recipe -> {
+            ResourceLocation recipeLocation = recipe.getId();
+            if (recipeLocation == null)
+                return false;
+            String recipeIdStr = recipeLocation.toString();
+            return recipeTypeRegex.matcher(recipe.getType().toString()).matches() &&
+                    recipeGroupRegex.matcher(recipe.getGroup()).matches() &&
+                    modidRegex.matcher(recipeLocation.getNamespace()).matches() &&
+                    recipeIdRegex.matcher(recipeLocation.getPath()).matches();
+        };
     }
 
     @SuppressWarnings({"unchecked", "unused"})
