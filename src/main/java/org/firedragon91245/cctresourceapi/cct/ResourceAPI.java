@@ -1,9 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
-import dan200.computercraft.api.lua.IComputerSystem;
-import dan200.computercraft.api.lua.ILuaAPI;
-import dan200.computercraft.api.lua.ILuaAPIFactory;
-import dan200.computercraft.api.lua.LuaFunction;
+import dan200.computercraft.api.lua.*;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -25,6 +22,7 @@ import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.MalformedURLException;
@@ -32,6 +30,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -433,6 +432,101 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return list;
+    }
+
+    // FIXME: Color mappings are completely wrong and formatting is also off, for example numbers above 9 need to be hex
+    // FIXME: Is color distance the problem?
+    @LuaFunction
+    public String imageBytesToCCFormat(Object image) throws LuaException {
+        if(image instanceof Map) {
+            Map<String, Object> imageMap = (Map<String, Object>) image;
+            if (!imageMap.containsKey("imageBytes") || !imageMap.containsKey("formatName"))
+                return null;
+
+            Object imageBytesObj = imageMap.get("imageBytes");
+            Object formatObj = imageMap.get("formatName");
+            if (imageBytesObj instanceof Map && formatObj instanceof String) {
+                Map<Integer, Double> imageBytes = (Map<Integer, Double>) imageBytesObj;
+                Byte[] bytes = imageBytes.entrySet().stream()
+                        .sorted(Comparator.comparingInt(Map.Entry::getKey))
+                        .map(entry -> entry.getValue().byteValue())
+                        .toArray(Byte[]::new);
+                String format = (String) formatObj;
+
+                byte[] byteArray = new byte[bytes.length];
+                for (int i = 0; i < bytes.length; i++) {
+                    byteArray[i] = bytes[i];
+                }
+
+                try {
+                    BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(byteArray));
+                    return convertBufferedImageToCCString(bufferedImage);
+                } catch (IOException e) {
+                    throw new LuaException("Failed to read image bytes");
+                }
+            }
+        }
+        return null;
+    }
+
+    private String convertBufferedImageToCCString(BufferedImage image) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        StringBuilder ccImageBuilder = new StringBuilder();
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Color color = new Color(image.getRGB(x, y), true);
+                int ccColor = findClosestCCColor(color);
+                ccImageBuilder.append(ccColor);
+            }
+            if (y < height - 1) {
+                ccImageBuilder.append("\n"); // Add newline between rows
+            }
+        }
+
+        return ccImageBuilder.toString();
+    }
+
+    private static final Color[] COMPUTECRAFT_PALETTE = {
+            new Color(240, 240, 240),   // 1: white
+            new Color(242, 178, 51),    // 2: orange
+            new Color(229, 127, 216),   // 4: magenta
+            new Color(153, 178, 242),   // 8: light blue
+            new Color(222, 222, 108),   // 16: yellow
+            new Color(127, 204, 25),    // 32: lime
+            new Color(242, 178, 204),   // 64: pink
+            new Color(76, 76, 76),      // 128: gray
+            new Color(153, 153, 153),   // 256: light gray
+            new Color(76, 153, 178),    // 512: cyan
+            new Color(178, 102, 229),   // 1024: purple
+            new Color(51, 102, 204),    // 2048: blue
+            new Color(127, 102, 76),    // 4096: brown
+            new Color(87, 166, 78),     // 8192: green
+            new Color(204, 76, 76),     // 16384: red
+            new Color(17, 17, 17)       // 32768: black
+    };
+
+    private int findClosestCCColor(Color color) {
+        int closestColorIndex = 0;
+
+        double closestDistance = colorDistance(color, COMPUTECRAFT_PALETTE[0]);
+        for (int i = 1; i < COMPUTECRAFT_PALETTE.length; i++) {
+            double distance = colorDistance(color, COMPUTECRAFT_PALETTE[i]);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestColorIndex = i;
+            }
+        }
+
+        return closestColorIndex;
+    }
+
+    private static double colorDistance(Color c1, Color c2) {
+        int rDiff = c1.getRed() - c2.getRed();
+        int gDiff = c1.getGreen() - c2.getGreen();
+        int bDiff = c1.getBlue() - c2.getBlue();
+        return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
     }
 
     public static HashMap<String, Object> itemStackAsHashMap(ItemStack item)
