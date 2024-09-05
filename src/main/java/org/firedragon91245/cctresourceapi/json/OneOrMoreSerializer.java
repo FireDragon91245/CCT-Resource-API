@@ -5,7 +5,6 @@ import org.firedragon91245.cctresourceapi.OneOrMore;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -52,13 +51,9 @@ public class OneOrMoreSerializer implements JsonDeserializer<OneOrMore<?>>, Json
     @Override
     public JsonElement serialize(OneOrMore<?> oneOrMore, Type type, JsonSerializationContext jsonSerializationContext) {
         AtomicReference<JsonElement> result = new AtomicReference<>();
-        oneOrMore.ifOneOrElse(one -> {
-            result.set(jsonSerializationContext.serialize(one));
-        }, more -> {
+        oneOrMore.ifOneOrElse(one -> result.set(jsonSerializationContext.serialize(one)), more -> {
             JsonArray array = new JsonArray();
-            more.forEach(o -> {
-                array.add(jsonSerializationContext.serialize(o));
-            });
+            more.forEach(o -> array.add(jsonSerializationContext.serialize(o)));
             result.set(array);
         });
         return result.get();

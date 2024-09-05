@@ -1,7 +1,6 @@
-package org.firedragon91245.cctresourceapi.cct;
+package org.firedragon91245.cctresourceapi.entity;
 
 import java.awt.image.BufferedImage;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.IntStream;
 

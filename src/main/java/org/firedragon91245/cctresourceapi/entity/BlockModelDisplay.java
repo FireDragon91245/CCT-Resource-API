@@ -1,4 +1,4 @@
-package org.firedragon91245.cctresourceapi.cct;
+package org.firedragon91245.cctresourceapi.entity;
 
 import java.util.HashMap;
 

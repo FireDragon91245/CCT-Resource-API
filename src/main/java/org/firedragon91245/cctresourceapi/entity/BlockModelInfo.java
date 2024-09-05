@@ -1,17 +1,17 @@
-package org.firedragon91245.cctresourceapi.cct;
+package org.firedragon91245.cctresourceapi.entity;
 
-import com.google.common.cache.AbstractCache;
 import net.minecraft.util.ResourceLocation;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class BlockModelInfo {
     private final ResourceLocation blockId;
     public boolean statefullModel;
     public BlockStateModel modelState;
     public BlockModel rootModel;
-    public HashMap<String, BlockModel> models;
-    public HashMap<String, ModelTexture> textures;
+    final public Map<String, BlockModel> models;
+    final public Map<String, ModelTexture> textures;
 
     public BlockModelInfo(ResourceLocation blockId) {
         this.blockId = blockId;

@@ -3,8 +3,8 @@ package org.firedragon91245.cctresourceapi.json;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import org.firedragon91245.cctresourceapi.OneOrMore;
-import org.firedragon91245.cctresourceapi.cct.BlockStateModel;
-import org.firedragon91245.cctresourceapi.cct.BlockStateModelVariant;
+import org.firedragon91245.cctresourceapi.entity.BlockStateModel;
+import org.firedragon91245.cctresourceapi.entity.BlockStateModelVariant;
 
 import java.lang.reflect.Type;
 
@@ -18,10 +18,8 @@ public class BlockStateModelSerializer implements JsonSerializer<BlockStateModel
                 if (variants.isJsonObject()) {
                     BlockStateModel model = new BlockStateModel();
                     JsonObject variantsObject = variants.getAsJsonObject();
-                    variantsObject.entrySet().forEach(entry -> {
-                        model.variants.put(entry.getKey(), jsonDeserializationContext.deserialize(entry.getValue(), new TypeToken<OneOrMore<BlockStateModelVariant>>() {
-                        }.getType()));
-                    });
+                    variantsObject.entrySet().forEach(entry -> model.variants.put(entry.getKey(), jsonDeserializationContext.deserialize(entry.getValue(), new TypeToken<OneOrMore<BlockStateModelVariant>>() {
+                    }.getType())));
                     return model;
                 }
             }

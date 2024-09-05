@@ -1,8 +1,7 @@
 package org.firedragon91245.cctresourceapi.json;
 
 import com.google.gson.*;
-import com.google.gson.annotations.JsonAdapter;
-import org.firedragon91245.cctresourceapi.cct.BlockStateModelVariant;
+import org.firedragon91245.cctresourceapi.entity.BlockStateModelVariant;
 
 import java.lang.reflect.Type;
 
@@ -18,9 +17,7 @@ public class BlockStateModelVariantSerializer implements JsonSerializer<BlockSta
 
         blockStateModelVariant.model = jsonObject.get("model").getAsString();
 
-        jsonObject.entrySet().stream().filter(entry -> !entry.getKey().equals("model")).forEach(entry -> {
-            blockStateModelVariant.properties.put(entry.getKey(), entry.getValue());
-        });
+        jsonObject.entrySet().stream().filter(entry -> !entry.getKey().equals("model")).forEach(entry -> blockStateModelVariant.properties.put(entry.getKey(), entry.getValue()));
         return blockStateModelVariant;
     }
 

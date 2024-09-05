@@ -1,4 +1,4 @@
-package org.firedragon91245.cctresourceapi.cct;
+package org.firedragon91245.cctresourceapi.entity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,7 +10,7 @@ public class BlockModel {
     }
 
     public String parent;
-    public Map<String, String> textures;
+    final public Map<String, String> textures;
     public String gui_light;
     public BlockModelDisplay display;
 
