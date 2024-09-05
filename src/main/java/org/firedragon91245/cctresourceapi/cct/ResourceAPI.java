@@ -16,6 +16,7 @@ import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
 import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.firedragon91245.cctresourceapi.CCT_Resource_API;
+import org.firedragon91245.cctresourceapi.ColorUtil;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -434,8 +435,6 @@ public class ResourceAPI implements ILuaAPI {
         return list;
     }
 
-    // FIXME: Color mappings are completely wrong and formatting is also off, for example numbers above 9 need to be hex
-    // FIXME: Is color distance the problem?
     @LuaFunction
     public String imageBytesToCCFormat(Object image) throws LuaException {
         if(image instanceof Map) {
@@ -478,7 +477,7 @@ public class ResourceAPI implements ILuaAPI {
             for (int x = 0; x < width; x++) {
                 Color color = new Color(image.getRGB(x, y), true);
                 int ccColor = findClosestCCColor(color);
-                ccImageBuilder.append(ccColor);
+                ccImageBuilder.append(Integer.toHexString(ccColor));
             }
             if (y < height - 1) {
                 ccImageBuilder.append("\n"); // Add newline between rows
@@ -488,31 +487,32 @@ public class ResourceAPI implements ILuaAPI {
         return ccImageBuilder.toString();
     }
 
-    private static final Color[] COMPUTECRAFT_PALETTE = {
-            new Color(240, 240, 240),   // 1: white
-            new Color(242, 178, 51),    // 2: orange
-            new Color(229, 127, 216),   // 4: magenta
-            new Color(153, 178, 242),   // 8: light blue
-            new Color(222, 222, 108),   // 16: yellow
-            new Color(127, 204, 25),    // 32: lime
-            new Color(242, 178, 204),   // 64: pink
-            new Color(76, 76, 76),      // 128: gray
-            new Color(153, 153, 153),   // 256: light gray
-            new Color(76, 153, 178),    // 512: cyan
-            new Color(178, 102, 229),   // 1024: purple
-            new Color(51, 102, 204),    // 2048: blue
-            new Color(127, 102, 76),    // 4096: brown
-            new Color(87, 166, 78),     // 8192: green
-            new Color(204, 76, 76),     // 16384: red
-            new Color(17, 17, 17)       // 32768: black
-    };
+    private static final Map<Integer, Color> COMPUTECRAFT_PALETTE = new HashMap<Integer, Color>()
+    {{
+            put(0, new Color(240, 240, 240));   // 1: white
+            put(1, new Color(242, 178, 51));    // 2: orange
+            put(2, new Color(229, 127, 216));   // 4: magenta
+            put(3, new Color(153, 178, 242));   // 8: light blue
+            put(4, new Color(222, 222, 108));   // 16: yellow
+            put(5, new Color(127, 204, 25));    // 32: lime
+            put(6, new Color(242, 178, 204));   // 64: pink
+            put(7, new Color(76, 76, 76));    // 128: gray
+            put(8, new Color(153, 153, 153));   // 256: light gray
+            put(9, new Color(76, 153, 178));    // 512: cyan
+            put(10, new Color(178, 102, 229));   // 1024: purple
+            put(11, new Color(51, 102, 204));    // 2048: blue
+            put(12, new Color(127, 102, 76));    // 4096: brown
+            put(13, new Color(87, 166, 78));     // 8192: green
+            put(14, new Color(204, 76, 76));     // 16384: red
+            put(15, new Color(17, 17, 17));       // 32768: black
+    }};
 
     private int findClosestCCColor(Color color) {
         int closestColorIndex = 0;
 
-        double closestDistance = colorDistance(color, COMPUTECRAFT_PALETTE[0]);
-        for (int i = 1; i < COMPUTECRAFT_PALETTE.length; i++) {
-            double distance = colorDistance(color, COMPUTECRAFT_PALETTE[i]);
+        double closestDistance = ColorUtil.rgbDistance(color, COMPUTECRAFT_PALETTE.get(0));
+        for (int i = 1; i < 16; i++) {
+            double distance = ColorUtil.rgbDistance(color, COMPUTECRAFT_PALETTE.get(i));
             if (distance < closestDistance) {
                 closestDistance = distance;
                 closestColorIndex = i;
@@ -520,13 +520,6 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return closestColorIndex;
-    }
-
-    private static double colorDistance(Color c1, Color c2) {
-        int rDiff = c1.getRed() - c2.getRed();
-        int gDiff = c1.getGreen() - c2.getGreen();
-        int bDiff = c1.getBlue() - c2.getBlue();
-        return Math.sqrt(rDiff * rDiff + gDiff * gDiff + bDiff * bDiff);
     }
 
     public static HashMap<String, Object> itemStackAsHashMap(ItemStack item)
@@ -607,12 +600,6 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return recipe -> true;
-
-        // TODO: implement ingredient filter
-        // TODO: also modify assembleRecipeResultFilter to use the same pattern (extract common parts for example matchItemStack)
-        // TODO: use hirarchy of method matchIngedients -> matchIngredient -> matchItemStacks -> matchItemStack -> matchNBT
-        // TODO: at any stage allow String as contains filter itemid + modid as regex filter and count if posible
-        // TODO: note at matchIngedients, matchIngedient and matchItemStacks if modid and itemid or z.b. "minecraft:stone" = 1 are present acumulate items of childs so {ingidients={"minecraft:stone"=3}} acumulate all ingidents item stacks and filter recipees that only take in a total of 3 stone
     }
 
     @SuppressWarnings("unchecked")
