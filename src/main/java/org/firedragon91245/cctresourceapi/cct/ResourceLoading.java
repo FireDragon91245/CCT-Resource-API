@@ -1,5 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import dan200.computercraft.api.lua.LuaException;
 import net.minecraft.block.Block;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.ModList;
@@ -13,16 +14,16 @@ import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 public class ResourceLoading {
     @Nullable
@@ -324,5 +325,38 @@ public class ResourceLoading {
         } catch (IOException ignored) {
         }
         return Optional.empty();
+    }
+
+    @SuppressWarnings("unchecked")
+    static <TReturn> TReturn loadBufferedImageFromTextureObject(Object image, Map<Integer, Color> colorMap, BiFunction<BufferedImage, Map<Integer, Color>, TReturn> consumer) throws LuaException {
+        if (image instanceof Map) {
+            Map<String, Object> imageMap = (Map<String, Object>) image;
+            if (!imageMap.containsKey("imageBytes") || !imageMap.containsKey("formatName"))
+                return null;
+
+            Object imageBytesObj = imageMap.get("imageBytes");
+            Object formatObj = imageMap.get("formatName");
+            if (imageBytesObj instanceof Map && formatObj instanceof String) {
+                Map<Integer, Double> imageBytes = (Map<Integer, Double>) imageBytesObj;
+                Byte[] bytes = imageBytes.entrySet().stream()
+                        .sorted(Comparator.comparingInt(Map.Entry::getKey))
+                        .map(entry -> entry.getValue().byteValue())
+                        .toArray(Byte[]::new);
+                String format = (String) formatObj;
+
+                byte[] byteArray = new byte[bytes.length];
+                for (int i = 0; i < bytes.length; i++) {
+                    byteArray[i] = bytes[i];
+                }
+
+                try {
+                    BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(byteArray));
+                    return consumer.apply(bufferedImage, colorMap);
+                } catch (IOException e) {
+                    throw new LuaException("Failed to read image bytes");
+                }
+            }
+        }
+        return null;
     }
 }
