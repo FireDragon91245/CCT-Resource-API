@@ -23,7 +23,6 @@ import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 public class ResourceLoading {
     @Nullable
@@ -328,7 +327,7 @@ public class ResourceLoading {
     }
 
     @SuppressWarnings("unchecked")
-    static <TReturn> TReturn loadBufferedImageFromTextureObject(Object image, Map<Integer, Color> colorMap, BiFunction<BufferedImage, Map<Integer, Color>, TReturn> consumer) throws LuaException {
+    static <TReturn> TReturn loadBufferedImageFromTextureObject(Object image, Map<Object, Color> colorMap, BiFunction<BufferedImage, Map<Object, Color>, TReturn> consumer) throws LuaException {
         if (image instanceof Map) {
             Map<String, Object> imageMap = (Map<String, Object>) image;
             if (!imageMap.containsKey("imageBytes") || !imageMap.containsKey("formatName"))

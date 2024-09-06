@@ -21,6 +21,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -28,7 +29,7 @@ import java.util.stream.Stream;
 
 public class ResourceAPI implements ILuaAPI {
 
-    private static final Map<Integer, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<Integer, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<Object, Color>() {{
         put(0, new Color(240, 240, 240));   // 1: white
         put(1, new Color(242, 178, 51));    // 2: orange
         put(2, new Color(229, 127, 216));   // 4: magenta
@@ -39,15 +40,15 @@ public class ResourceAPI implements ILuaAPI {
         put(7, new Color(76, 76, 76));    // 128: gray
         put(8, new Color(153, 153, 153));   // 256: light gray
         put(9, new Color(76, 153, 178));    // 512: cyan
-        put(10, new Color(178, 102, 229));   // 1024: purple
-        put(11, new Color(51, 102, 204));    // 2048: blue
-        put(12, new Color(127, 102, 76));    // 4096: brown
-        put(13, new Color(87, 166, 78));     // 8192: green
-        put(14, new Color(204, 76, 76));     // 16384: red
-        put(15, new Color(17, 17, 17));       // 32768: black
+        put('a', new Color(178, 102, 229));   // 1024: purple
+        put('b', new Color(51, 102, 204));    // 2048: blue
+        put('c', new Color(127, 102, 76));    // 4096: brown
+        put('d', new Color(87, 166, 78));     // 8192: green
+        put('e', new Color(204, 76, 76));     // 16384: red
+        put('f', new Color(17, 17, 17));       // 32768: black
     }};
 
-    private static final Map<Integer, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<Integer, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<Object, Color>() {{
         put(1, new Color(240, 240, 240));   // 1: white
         put(2, new Color(242, 178, 51));    // 2: orange
         put(4, new Color(229, 127, 216));   // 4: magenta
@@ -127,17 +128,17 @@ public class ResourceAPI implements ILuaAPI {
         return list;
     }
 
-    private static Map<Integer, Map<Integer, Integer>> bufferedImageToPixels(BufferedImage image, Map<Integer, Color> colorMap) {
+    private static Map<Integer, Map<Integer, Object>> bufferedImageToPixels(BufferedImage image, Map<Object, Color> colorMap) {
         int width = image.getWidth();
         int height = image.getHeight();
-        Map<Integer, Map<Integer, Integer>> pixels = new HashMap<>();
+        Map<Integer, Map<Integer, Object>> pixels = new HashMap<>();
 
         for (int y = 0; y < height; y++) {
-            Map<Integer, Integer> row = new HashMap<>();
+            Map<Integer, Object> row = new HashMap<>();
             for (int x = 0; x < width; x++) {
                 Color color = new Color(image.getRGB(x, y), true);
-                int ccColor = findClosestCCColor(color, colorMap);
-                row.put(x + 1, ccColor);
+                Object colorKey = findClosestCCColor(color, colorMap);
+                row.put(x + 1, colorKey);
             }
             pixels.put(y + 1, row);
         }
@@ -145,7 +146,7 @@ public class ResourceAPI implements ILuaAPI {
         return pixels;
     }
 
-    private static String convertBufferedImageToCCString(BufferedImage image, Map<Integer, Color> colorMap) {
+    private static String convertBufferedImageToCCString(BufferedImage image, Map<Object, Color> colorMap) {
         int width = image.getWidth();
         int height = image.getHeight();
         StringBuilder ccImageBuilder = new StringBuilder();
@@ -153,8 +154,8 @@ public class ResourceAPI implements ILuaAPI {
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 Color color = new Color(image.getRGB(x, y), true);
-                int ccColor = findClosestCCColor(color, colorMap);
-                ccImageBuilder.append(Integer.toHexString(ccColor));
+                Object ccColor = findClosestCCColor(color, colorMap);
+                ccImageBuilder.append(ccColor);
             }
             if (y < height - 1) {
                 ccImageBuilder.append("\n"); // Add newline between rows
@@ -164,13 +165,13 @@ public class ResourceAPI implements ILuaAPI {
         return ccImageBuilder.toString();
     }
 
-    private static int findClosestCCColor(Color color, Map<Integer, Color> colorMap) {
-        Enumeration<Map.Entry<Integer, Color>> entries = Collections.enumeration(colorMap.entrySet());
-        Map.Entry<Integer, Color> firstEntry = entries.nextElement();
-        int closestColorKey = firstEntry.getKey();
+    private static Object findClosestCCColor(Color color, Map<Object, Color> colorMap) {
+        Enumeration<Map.Entry<Object, Color>> entries = Collections.enumeration(colorMap.entrySet());
+        Map.Entry<Object, Color> firstEntry = entries.nextElement();
+        Object closestColorKey = firstEntry.getKey();
         double closestDistance = ColorUtil.rgbDistance(color, firstEntry.getValue());
         while(entries.hasMoreElements()) {
-            Map.Entry<Integer, Color> currentEntry = entries.nextElement();
+            Map.Entry<Object, Color> currentEntry = entries.nextElement();
             double distance = ColorUtil.rgbDistance(color, currentEntry.getValue());
             if (distance < closestDistance) {
                 closestDistance = distance;
@@ -217,14 +218,126 @@ public class ResourceAPI implements ILuaAPI {
 
     @SuppressWarnings("unused")
     @LuaFunction
-    final public Map<Integer, Map<Integer, Integer>> imageBytesToPixels(Object image, String colorFormat) throws LuaException {
+    final public Map<Integer, Map<Integer, Object>> imageBytesToPixelsCustomColorMap(Object image, Object colorMap, String inColorFormat) throws LuaException {
+        Map<Object, Color> customColorMap;
+        if(inColorFormat.equals("rgb-int"))
+        {
+            customColorMap = loadColorMap(colorMap, ResourceAPI::colorFromRGBInt);
+        }
+        else if(inColorFormat.equals("rgb-table"))
+        {
+            customColorMap = loadColorMap(colorMap, ResourceAPI::colorFromRGBTable);
+        }
+        else
+        {
+            throw new LuaException("Invalid color format");
+        }
+
+        if (customColorMap == null)
+            throw new LuaException("Invalid custom color map");
+
+        return ResourceLoading.loadBufferedImageFromTextureObject(image, customColorMap, ResourceAPI::bufferedImageToPixels);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Color colorFromRGBTable(Object o) {
+        if (o instanceof Map) {
+            Map<Object, Object> colorMap = (Map<Object, Object>) o;
+            if (colorMap.containsKey("r") && colorMap.containsKey("g") && colorMap.containsKey("b")) {
+                Object r = colorMap.get("r");
+                Object g = colorMap.get("g");
+                Object b = colorMap.get("b");
+                Object a = colorMap.getOrDefault("a", 255D);
+                if (r instanceof Double && g instanceof Double && b instanceof Double && a instanceof Double) {
+                    return new Color(((Double) r).intValue(), ((Double) g).intValue(), ((Double) b).intValue(), ((Double) a).intValue());
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Color colorFromRGBInt(Object o) {
+        if (o instanceof Double) {
+            int color = ((Double) o).intValue();
+            return new Color(color);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    @LuaFunction
+    final public Map<Integer, Map<Integer, Object>> imageBytesToPixels(Object image, String colorFormat) throws LuaException {
         if (colorFormat == null || colorFormat.isEmpty() || colorFormat.equals("blit")) {
             return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_BLIT, ResourceAPI::bufferedImageToPixels);
-        } else if (colorFormat.equals("dec")) {
+        } else if (colorFormat.equals("decimal")) {
             return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_DEC, ResourceAPI::bufferedImageToPixels);
+        } else if (colorFormat.equals("rgb-int")) {
+            return ResourceLoading.loadBufferedImageFromTextureObject(image, null, ResourceAPI::bufferedImageToPixelsRGB);
+        } else if (colorFormat.equals("rgb-table")) {
+            return ResourceLoading.loadBufferedImageFromTextureObject(image, null, ResourceAPI::bufferedImageToPixelsRGBTable);
         } else {
             throw new LuaException("Invalid color format");
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Object, Color> loadColorMap(@Nullable Object customColorMap, Function<Object, Color> converter) throws LuaException {
+        if (customColorMap instanceof Map) {
+            Map<Object, Object> rawMap = (Map<Object, Object>) customColorMap;
+            Map<Object, Color> colorMap = new HashMap<>();
+            for (Map.Entry<Object, Object> rawEntry : rawMap.entrySet())
+            {
+                Object key = rawEntry.getKey();
+                Object value = rawEntry.getValue();
+                if (key == null || value == null)
+                    continue;
+                @Nullable Color color = converter.apply(value);
+                if (color == null)
+                    throw new LuaException("Malformed custom color map entry");
+                colorMap.put(key, color);
+            }
+            return colorMap;
+        }
+        return null;
+    }
+
+    private static Map<Integer, Map<Integer, Object>> bufferedImageToPixelsRGBTable(BufferedImage bufferedImage, @Nullable Map<Object, Color> objectColorMap) {
+        int width = bufferedImage.getWidth();
+        int height = bufferedImage.getHeight();
+        Map<Integer, Map<Integer, Object>> pixels = new HashMap<>();
+
+        for (int y = 0; y < height; y++) {
+            Map<Integer, Object> row = new HashMap<>();
+            for (int x = 0; x < width; x++) {
+                Color color = new Color(bufferedImage.getRGB(x, y), true);
+                row.put(x + 1, new HashMap<String, Object>() {{
+                    put("r", color.getRed());
+                    put("g", color.getGreen());
+                    put("b", color.getBlue());
+                    put("a", color.getAlpha());
+                }});
+            }
+            pixels.put(y + 1, row);
+        }
+
+        return pixels;
+    }
+
+    private static Map<Integer, Map<Integer, Object>> bufferedImageToPixelsRGB(BufferedImage bufferedImage, Map<Object, Color> objectColorMap) {
+        int width = bufferedImage.getWidth();
+        int height = bufferedImage.getHeight();
+        Map<Integer, Map<Integer, Object>> pixels = new HashMap<>();
+
+        for (int y = 0; y < height; y++) {
+            Map<Integer, Object> row = new HashMap<>();
+            for (int x = 0; x < width; x++) {
+                Color color = new Color(bufferedImage.getRGB(x, y), true);
+                row.put(x + 1, color.getRGB());
+            }
+            pixels.put(y + 1, row);
+        }
+
+        return pixels;
     }
 
     @SuppressWarnings("unused")
