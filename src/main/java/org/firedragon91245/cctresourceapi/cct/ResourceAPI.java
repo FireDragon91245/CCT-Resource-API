@@ -215,6 +215,7 @@ public class ResourceAPI implements ILuaAPI {
                 .toArray(String[]::new);
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public Map<Integer, Map<Integer, Integer>> imageBytesToPixels(Object image, String colorFormat) throws LuaException {
         if (colorFormat == null || colorFormat.isEmpty() || colorFormat.equals("blit")) {
@@ -226,10 +227,19 @@ public class ResourceAPI implements ILuaAPI {
         }
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
+    @SuppressWarnings("unused")
     @LuaFunction
     final public String imageBytesToCCFormat(Object image) throws LuaException {
         return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_BLIT, ResourceAPI::convertBufferedImageToCCString);
+    }
+
+    private static void addRecipeToMap(Map<String, Object> recipeMap, IRecipe<?> recipe)
+    {
+        recipeMap.put("recipeid", recipe.getId().toString());
+        recipeMap.put("type", recipe.getType().toString());
+        recipeMap.put("group", recipe.getGroup());
+        recipeMap.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
+        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem()));
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -244,13 +254,7 @@ public class ResourceAPI implements ILuaAPI {
             String recipeId = (String) filter;
             ResourceLocation recipeLocation = new ResourceLocation(recipeId);
             Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
-            recipes.stream().filter(recipe -> recipe.getId().equals(recipeLocation)).findFirst().ifPresent(recipe -> {
-                recipeInfo.put("recipeid", recipe.getId().toString());
-                recipeInfo.put("type", recipe.getType().toString());
-                recipeInfo.put("group", recipe.getGroup());
-                recipeInfo.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
-                recipeInfo.put("result", itemStackAsHashMap(recipe.getResultItem()));
-            });
+            recipes.stream().filter(recipe -> recipe.getId().equals(recipeLocation)).findFirst().ifPresent(recipe -> addRecipeToMap(recipeInfo, recipe));
             return recipeInfo;
         } else if (filter instanceof Map) {
             Map<String, Object> filterMap = (Map<String, Object>) filter;
@@ -260,13 +264,7 @@ public class ResourceAPI implements ILuaAPI {
             Predicate<IRecipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
 
             Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
-            recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst().ifPresent(recipe -> {
-                recipeInfo.put("recipeid", recipe.getId().toString());
-                recipeInfo.put("type", recipe.getType().toString());
-                recipeInfo.put("group", recipe.getGroup());
-                recipeInfo.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
-                recipeInfo.put("result", itemStackAsHashMap(recipe.getResultItem()));
-            });
+            recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst().ifPresent(recipe -> addRecipeToMap(recipeInfo, recipe));
 
             return recipeInfo;
         }
