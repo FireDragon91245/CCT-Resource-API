@@ -1,6 +1,6 @@
 package org.firedragon91245.cctresourceapi.entity;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 public class ItemModel implements IModel {
@@ -15,5 +15,12 @@ public class ItemModel implements IModel {
     @Override
     public Map<String, String> getTextures() {
         return textures;
+    }
+
+    public Map<String, Object> asHashMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("parent", parent);
+        map.put("textures", textures);
+        return map;
     }
 }

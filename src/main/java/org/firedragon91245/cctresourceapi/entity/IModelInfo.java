@@ -4,7 +4,7 @@ import java.util.Map;
 
 public interface IModelInfo {
 
-    public Map<String, ? extends IModel> getModels();
+    Map<String, ? extends IModel> getModels();
 
     Map<String, ?> getTextures();
 
