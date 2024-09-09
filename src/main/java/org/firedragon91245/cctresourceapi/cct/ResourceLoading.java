@@ -318,13 +318,12 @@ public class ResourceLoading {
 
             Object imageBytesObj = imageMap.get("imageBytes");
             Object formatObj = imageMap.get("formatName");
-            if (imageBytesObj instanceof Map && formatObj instanceof String) {
+            if (imageBytesObj instanceof Map && formatObj instanceof String format) {
                 Map<Integer, Double> imageBytes = (Map<Integer, Double>) imageBytesObj;
                 Byte[] bytes = imageBytes.entrySet().stream()
                         .sorted(Comparator.comparingInt(Map.Entry::getKey))
                         .map(entry -> entry.getValue().byteValue())
                         .toArray(Byte[]::new);
-                String format = (String) formatObj;
 
                 byte[] byteArray = new byte[bytes.length];
                 for (int i = 0; i < bytes.length; i++) {

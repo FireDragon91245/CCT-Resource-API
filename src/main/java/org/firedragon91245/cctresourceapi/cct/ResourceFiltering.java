@@ -39,8 +39,7 @@ public class ResourceFiltering {
         {
             Map<Object, Object> ingredientsFilterMap = (Map<Object, Object>) ingredientsFilter;
             return recipe -> matchIngredients(recipe.getIngredients(), ingredientsFilterMap);
-        } else if (ingredientsFilter instanceof String) {
-            String ingredientsId = (String) ingredientsFilter;
+        } else if (ingredientsFilter instanceof String ingredientsId) {
             return recipe -> {
                 NonNullList<Ingredient> ingredients = recipe.getIngredients();
                 return ingredients.stream()
@@ -443,9 +442,8 @@ public class ResourceFiltering {
             return recipe -> true;
 
         Object resultFilter = filterMap.get("result");
-        if(resultFilter instanceof String)
+        if(resultFilter instanceof String resultId)
         {
-            String resultId = (String) resultFilter;
             ResourceLocation resultLocation = new ResourceLocation(resultId);
             return recipe -> Objects.equals(recipe.getResultItem().getItem().getRegistryName(), resultLocation);
         } else if (resultFilter instanceof Map) {

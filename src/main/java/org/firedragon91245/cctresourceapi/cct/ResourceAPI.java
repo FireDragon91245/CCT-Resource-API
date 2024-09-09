@@ -33,7 +33,7 @@ import java.util.stream.Stream;
 
 public class ResourceAPI implements ILuaAPI {
 
-    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<Object, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<>() {{
         put(0, new Color(240, 240, 240));   // 1: white
         put(1, new Color(242, 178, 51));    // 2: orange
         put(2, new Color(229, 127, 216));   // 4: magenta
@@ -52,7 +52,7 @@ public class ResourceAPI implements ILuaAPI {
         put('f', new Color(17, 17, 17));       // 32768: black
     }};
 
-    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<Object, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<>() {{
         put(1, new Color(240, 240, 240));   // 1: white
         put(2, new Color(242, 178, 51));    // 2: orange
         put(4, new Color(229, 127, 216));   // 4: magenta
@@ -225,9 +225,8 @@ public class ResourceAPI implements ILuaAPI {
     final public Map<String, Object> getItemInfo(Object filter, String tag)
     {
         Item item;
-        if(filter instanceof String)
+        if(filter instanceof String itemId)
         {
-            String itemId = (String) filter;
             ResourceLocation itemLocation = new ResourceLocation(itemId);
             if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
                 return null;
@@ -426,8 +425,7 @@ public class ResourceAPI implements ILuaAPI {
 
         HashMap<String, Object> recipeInfo = new HashMap<>();
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (filter instanceof String) {
-            String recipeId = (String) filter;
+        if (filter instanceof String recipeId) {
             ResourceLocation recipeLocation = new ResourceLocation(recipeId);
             Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
             recipes.stream().filter(recipe -> recipe.getId().equals(recipeLocation)).findFirst().ifPresent(recipe -> addRecipeToMap(recipeInfo, recipe));
