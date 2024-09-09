@@ -1,12 +1,12 @@
 package org.firedragon91245.cctresourceapi.cct;
 
 import dan200.computercraft.api.lua.LuaException;
-import net.minecraft.block.Block;
-import net.minecraft.item.Item;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.moddiscovery.ModFile;
-import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
+import net.minecraftforge.forgespi.language.IModFileInfo;
+import net.minecraftforge.forgespi.locating.IModFile;
 import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 import org.firedragon91245.cctresourceapi.entity.*;
 
@@ -266,10 +266,10 @@ public class ResourceLoading {
     }
 
     protected static Optional<File> getModJarFromModId(String modid) {
-        Optional<ModFile> file = ModList.get().getMods().stream()
+        Optional<IModFile> file = ModList.get().getMods().stream()
                 .filter(modContainer -> modContainer.getModId().equals(modid))
                 .map(modContainer -> {
-                    ModFileInfo modFileInfo = modContainer.getOwningFile();
+                    IModFileInfo modFileInfo = modContainer.getOwningFile();
                     if (modFileInfo != null) {
                         return modFileInfo.getFile();
                     }
@@ -278,7 +278,7 @@ public class ResourceLoading {
                 .filter(Objects::nonNull)
                 .findFirst();
 
-        return file.map(ModFile::getFilePath).map(Path::toFile);
+        return file.map(IModFile::getFilePath).map(Path::toFile);
     }
 
     protected static Optional<String> loadBundledFileText(String location) {

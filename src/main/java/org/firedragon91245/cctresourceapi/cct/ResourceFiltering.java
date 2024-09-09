@@ -1,12 +1,12 @@
 package org.firedragon91245.cctresourceapi.cct;
 
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipe;
-import net.minecraft.item.crafting.Ingredient;
+import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.*;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import org.firedragon91245.cctresourceapi.Util;
 
 import java.util.*;
@@ -30,7 +30,7 @@ public class ResourceFiltering {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Predicate<IRecipe<?>> assembleRecipeIngredientFilter(Map<String, Object> filterMap) {
+    protected static Predicate<Recipe<?>> assembleRecipeIngredientFilter(Map<String, Object> filterMap) {
         if(!filterMap.containsKey("ingredients"))
             return recipe -> true;
 
@@ -259,81 +259,81 @@ public class ResourceFiltering {
     }
 
     @SuppressWarnings("unchecked")
-    private static boolean matchNBT(CompoundNBT tag, Map<Object, Object> nbtObj) {
+    private static boolean matchNBT(CompoundTag tag, Map<Object, Object> nbtObj) {
         if(tag == null)
             return false;
 
         for (Map.Entry<Object, Object> entry : nbtObj.entrySet()) {
             String key = (String) entry.getKey();
             Object value = entry.getValue();
-            INBT tagValue = tag.get(key);
+            Tag tagValue = tag.get(key);
 
             if(value instanceof String)
             {
-                if(!(tagValue instanceof StringNBT))
+                if(!(tagValue instanceof StringTag))
                     return false;
                 if(!tagValue.getAsString().equals(value))
                     return false;
             }
             else if(value instanceof Integer)
             {
-                if(!(tagValue instanceof IntNBT))
+                if(!(tagValue instanceof IntTag))
                     return false;
-                if(((IntNBT) tagValue).getAsInt() != (int) value)
+                if(((IntTag) tagValue).getAsInt() != (int) value)
                     return false;
             }
             else if(value instanceof Double)
             {
-                if(!(tagValue instanceof DoubleNBT))
+                if(!(tagValue instanceof DoubleTag))
                     return false;
-                if(((DoubleNBT) tagValue).getAsDouble() != (double) value)
+                if(((DoubleTag) tagValue).getAsDouble() != (double) value)
                     return false;
             }
             else if(value instanceof Float)
             {
-                if(!(tagValue instanceof FloatNBT))
+                if(!(tagValue instanceof FloatTag))
                     return false;
-                if(((FloatNBT) tagValue).getAsFloat() != (float) value)
+                if(((FloatTag) tagValue).getAsFloat() != (float) value)
                     return false;
             }
             else if(value instanceof Long)
             {
-                if(!(tagValue instanceof LongNBT))
+                if(!(tagValue instanceof LongTag))
                     return false;
-                if(((LongNBT) tagValue).getAsLong() != (long) value)
+                if(((LongTag) tagValue).getAsLong() != (long) value)
                     return false;
             }
             else if(value instanceof Byte)
             {
-                if(!(tagValue instanceof ByteNBT))
+                if(!(tagValue instanceof ByteTag))
                     return false;
-                if(((ByteNBT) tagValue).getAsByte() != (byte) value)
+                if(((ByteTag) tagValue).getAsByte() != (byte) value)
                     return false;
             }
             else if(value instanceof Short)
             {
-                if(!(tagValue instanceof ShortNBT))
+                if(!(tagValue instanceof ShortTag))
                     return false;
-                if(((ShortNBT) tagValue).getAsShort() != (short) value)
+                if(((ShortTag) tagValue).getAsShort() != (short) value)
                     return false;
             }
             else if(value instanceof Boolean)
             {
-                if(!(tagValue instanceof ByteNBT))
+                if(!(tagValue instanceof ByteTag))
                     return false;
-                if(((ByteNBT) tagValue).getAsByte() == 1 != (boolean) value)
+                if(((ByteTag) tagValue).getAsByte() == 1 != (boolean) value)
                     return false;
             }
             else if(value instanceof Map)
             {
-                CompoundNBT tagCompound = tag.getCompound(key);
+                CompoundTag tagCompound = tag.getCompound(key);
                 boolean nbtMatch = matchNBT(tagCompound, (Map<Object, Object>) value);
                 if(!nbtMatch)
                     return false;
             }
             else if(value instanceof List)
             {
-                ListNBT tagList = tag.getList(key, 10);
+                ListTag tagList = tag.getList(key, 10);
                 boolean nbtMatch = matchListNBT(tagList, (List<Object>) value);
                 if(!nbtMatch)
                     return false;
@@ -347,58 +347,58 @@ public class ResourceFiltering {
     }
 
     @SuppressWarnings("unchecked")
-    private static boolean matchListNBT(ListNBT tagList, List<Object> value) {
+    private static boolean matchListNBT(ListTag tagList, List<Object> value) {
         if(tagList.size() != value.size())
             return false;
 
         for (int i = 0; i < tagList.size(); i++) {
-            INBT tagElement = tagList.get(i);
+            Tag tagElement = tagList.get(i);
             Object valueElement = value.get(i);
 
-            if(tagElement instanceof StringNBT && valueElement instanceof String)
+            if(tagElement instanceof StringTag && valueElement instanceof String)
             {
                 if(!tagElement.getAsString().equals(valueElement))
                     return false;
             }
-            else if(tagElement instanceof IntNBT && valueElement instanceof Integer)
+            else if(tagElement instanceof IntTag && valueElement instanceof Integer)
             {
-                if(((IntNBT) tagElement).getAsInt() != (int) valueElement)
+                if(((IntTag) tagElement).getAsInt() != (int) valueElement)
                     return false;
             }
-            else if(tagElement instanceof DoubleNBT && valueElement instanceof Double)
+            else if(tagElement instanceof DoubleTag && valueElement instanceof Double)
             {
-                if(((DoubleNBT) tagElement).getAsDouble() != (double) valueElement)
+                if(((DoubleTag) tagElement).getAsDouble() != (double) valueElement)
                     return false;
             }
-            else if(tagElement instanceof FloatNBT && valueElement instanceof Float)
+            else if(tagElement instanceof FloatTag && valueElement instanceof Float)
             {
-                if(((FloatNBT) tagElement).getAsFloat() != (float) valueElement)
+                if(((FloatTag) tagElement).getAsFloat() != (float) valueElement)
                     return false;
             }
-            else if(tagElement instanceof LongNBT && valueElement instanceof Long)
+            else if(tagElement instanceof LongTag && valueElement instanceof Long)
             {
-                if(((LongNBT) tagElement).getAsLong() != (long) valueElement)
+                if(((LongTag) tagElement).getAsLong() != (long) valueElement)
                     return false;
             }
-            else if(tagElement instanceof ByteNBT && valueElement instanceof Byte)
+            else if(tagElement instanceof ByteTag && valueElement instanceof Byte)
             {
-                if(((ByteNBT) tagElement).getAsByte() != (byte) valueElement)
+                if(((ByteTag) tagElement).getAsByte() != (byte) valueElement)
                     return false;
             }
-            else if(tagElement instanceof ShortNBT && valueElement instanceof Short)
+            else if(tagElement instanceof ShortTag && valueElement instanceof Short)
             {
-                if(((ShortNBT) tagElement).getAsShort() != (short) valueElement)
+                if(((ShortTag) tagElement).getAsShort() != (short) valueElement)
                     return false;
             }
-            else if(tagElement instanceof CompoundNBT && valueElement instanceof Map)
+            else if(tagElement instanceof CompoundTag && valueElement instanceof Map)
             {
-                boolean nbtMatch = matchNBT((CompoundNBT) tagElement, (Map<Object, Object>) valueElement);
+                boolean nbtMatch = matchNBT((CompoundTag) tagElement, (Map<Object, Object>) valueElement);
                 if(!nbtMatch)
                     return false;
             }
-            else if(tagElement instanceof ListNBT && valueElement instanceof List)
+            else if(tagElement instanceof ListTag && valueElement instanceof List)
             {
-                boolean nbtMatch = matchListNBT((ListNBT) tagElement, (List<Object>) valueElement);
+                boolean nbtMatch = matchListNBT((ListTag) tagElement, (List<Object>) valueElement);
                 if(!nbtMatch)
                     return false;
             }
@@ -438,7 +438,7 @@ public class ResourceFiltering {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Predicate<IRecipe<?>> assembleRecipeResultFilter(Map<String, Object> filterMap) {
+    protected static Predicate<Recipe<?>> assembleRecipeResultFilter(Map<String, Object> filterMap) {
         if(!filterMap.containsKey("result"))
             return recipe -> true;
 
@@ -456,7 +456,7 @@ public class ResourceFiltering {
         return recipe -> true;
     }
 
-    protected static Predicate<IRecipe<?>> assembleRecipeSimpleFilter(Map<String, Object> filterMap) {
+    protected static Predicate<Recipe<?>> assembleRecipeSimpleFilter(Map<String, Object> filterMap) {
         String recipeType = (String) filterMap.getOrDefault("type", ".*");
         String recipeGroup = (String) filterMap.getOrDefault("group", ".*");
         String modid = (String) filterMap.getOrDefault("modid", ".*");

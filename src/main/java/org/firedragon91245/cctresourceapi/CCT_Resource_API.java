@@ -2,8 +2,8 @@ package org.firedragon91245.cctresourceapi;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.mojang.math.Vector3f;
 import dan200.computercraft.api.ComputerCraftAPI;
-import net.minecraft.util.math.vector.Vector3f;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
