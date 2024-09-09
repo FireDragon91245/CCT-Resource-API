@@ -2,6 +2,7 @@ package org.firedragon91245.cctresourceapi.cct;
 
 import dan200.computercraft.api.lua.LuaException;
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.moddiscovery.ModFile;
@@ -42,7 +43,7 @@ public class ResourceLoading {
                     modelInfo.models.put("minecraft:block/" + blockId, model);
 
                     modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
-                    loadBlockModelTextures(modelInfo);
+                    loadModelTextures(modelInfo);
                     return modelInfo;
                 }
                 else {
@@ -77,7 +78,7 @@ public class ResourceLoading {
                         modelInfo.models.put(location.getNamespace() + ":block/" + location.getPath(), model);
 
                         modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
-                        loadBlockModelTextures(modelInfo);
+                        loadModelTextures(modelInfo);
                         return modelInfo;
                     }
                 }
@@ -87,23 +88,6 @@ public class ResourceLoading {
 
         }
         return null;
-    }
-
-    protected static void loadBlockModelTextures(BlockModelInfo modelInfo) {
-        modelInfo.models.forEach((key, value) -> {
-            if (value != null) {
-                if (value.textures != null) {
-                    value.textures.forEach((key1, value1) -> {
-                        if (value1 != null && !value1.startsWith("#")) {
-                            if(modelInfo.textures.containsKey(value1))
-                                return;
-                            Optional<ModelTexture> texture = loadBlockTextureByLocation(value1);
-                            texture.ifPresent(modelTexture -> modelInfo.textures.put(value1, modelTexture));
-                        }
-                    });
-                }
-            }
-        });
     }
 
     protected static HashMap<String, BlockModel> getParentModelsRecursive(BlockModelInfo modelInfo) {
@@ -151,7 +135,7 @@ public class ResourceLoading {
         });
 
         modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
-        loadBlockModelTextures(modelInfo);
+        loadModelTextures(modelInfo);
         return modelInfo;
     }
 
@@ -215,8 +199,7 @@ public class ResourceLoading {
         return Optional.empty();
     }
 
-    protected static Optional<ModelTexture> loadBlockTextureByLocation(String texture)
-    {
+    private static Optional<ModelTexture> getModelTexture(String texture) {
         if(!texture.contains(":"))
         {
             texture = "minecraft:" + texture;
@@ -357,5 +340,135 @@ public class ResourceLoading {
             }
         }
         return null;
+    }
+
+    public static void loadItemModelInfo(Item item, HashMap<String, Object> itemInfo) {
+        ResourceLocation itemId = item.getRegistryName();
+        if (itemId == null)
+            return;
+
+        ItemModelInfo model = loadItemModelInfoByItemId(itemId);
+        if (model == null)
+            return;
+
+        itemInfo.put("model", model.asHashMap());
+    }
+
+    private static URL getModURLFromModId(String modid)
+    {
+        File f = getModJarFromModId(modid).orElse(null);
+        if (f == null)
+            return null;
+
+        URL jarUrl = null;
+        try {
+            jarUrl = new URL("jar:file:" + f.getAbsolutePath() + "!/");
+        } catch (MalformedURLException ignored) {
+        }
+        return jarUrl;
+    }
+
+    private static ItemModelInfo loadItemModelInfoByItemId(ResourceLocation itemId) {
+        ItemModelInfo modelInfo = new ItemModelInfo(itemId.toString());
+        if (itemId.getNamespace().equals("minecraft")) {
+            String itemIdStr = itemId.getPath();
+            Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/item/" + itemIdStr + ".json");
+            if (modelJson.isPresent()) {
+                ItemModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), ItemModel.class);
+                modelInfo.rootModel = model;
+                modelInfo.models.put("minecraft:item/" + itemIdStr, model);
+
+                modelInfo.models.putAll(getParentModelsRecursiveItem(modelInfo));
+                loadModelTextures(modelInfo);
+                return modelInfo;
+            }
+            else {
+                return null;
+            }
+        } else {
+            URL jarUrl = getModURLFromModId(itemId.getNamespace());
+            if(jarUrl == null)
+                return null;
+
+            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
+            {
+                Optional<String> modelJson = loadFileText(loader, "assets/" + itemId.getNamespace() + "/models/item/" + itemId.getPath() + ".json");
+                if (modelJson.isPresent()) {
+                    ItemModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), ItemModel.class);
+                    modelInfo.rootModel = model;
+                    modelInfo.models.put(itemId.getNamespace() + ":item/" + itemId.getPath(), model);
+
+                    modelInfo.models.putAll(getParentModelsRecursiveItem(modelInfo));
+                    loadModelTextures(modelInfo);
+                    return modelInfo;
+                }
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+
+        }
+        return null;
+    }
+
+    private static void loadModelTextures(IModelInfo modelInfo)
+    {
+        modelInfo.getModels().forEach((key, value) -> {
+            if (value != null) {
+                if (value.getTextures() != null) {
+                    value.getTextures().forEach((key1, value1) -> {
+                        if (value1 != null && !value1.startsWith("#")) {
+                            if(modelInfo.getTextures().containsKey(value1))
+                                return;
+                            Optional<ModelTexture> texture = getModelTexture(value1);
+                            texture.ifPresent(modelTexture -> modelInfo.putTexture(value1, modelTexture));
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    private static Map<String, ItemModel> getParentModelsRecursiveItem(ItemModelInfo modelInfo) {
+        HashMap<String, ItemModel> newModelsCollector = new HashMap<>();
+        HashMap<String, ItemModel> newModels = new HashMap<>();
+        do {
+            newModels.clear();
+            modelInfo.models.forEach((key, value) -> {
+                if (value != null && value.parent != null) {
+                    if (modelInfo.models.containsKey(value.parent) || newModels.containsKey(value.parent) || newModelsCollector.containsKey(value.parent))
+                        return;
+                    ItemModel parentModel = loadItemModelByLocation(value.parent);
+                    newModels.put(value.parent, parentModel);
+                }
+            });
+            newModelsCollector.putAll(newModels);
+        } while (!newModels.isEmpty());
+
+        return newModelsCollector;
+    }
+
+    private static ItemModel loadItemModelByLocation(String parent) {
+        if(!parent.contains(":"))
+        {
+            parent = "minecraft:" + parent;
+        }
+        if (parent.startsWith("minecraft:")) {
+            String modelid = parent.substring(10);
+            Optional<String> modelJson = loadBundledFileText("bundled_resources/minecraft/models/" + modelid + ".json");
+            return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, ItemModel.class)).orElse(null);
+        } else {
+            URL jarUrl = getModURLFromModId(parent.split(":")[0]);
+            if(jarUrl == null)
+                return null;
+
+            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
+            {
+                Optional<String> modelJson = loadFileText(loader, "assets/" + parent.split(":")[0] + "/models/" + parent.split(":")[1] + ".json");
+                return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, ItemModel.class)).orElse(null);
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+            return null;
+        }
     }
 }

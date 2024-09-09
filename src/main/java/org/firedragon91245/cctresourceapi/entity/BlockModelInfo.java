@@ -2,10 +2,11 @@ package org.firedragon91245.cctresourceapi.entity;
 
 import net.minecraft.util.ResourceLocation;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BlockModelInfo {
+public class BlockModelInfo implements IModelInfo {
     private final ResourceLocation blockId;
     public boolean statefullModel;
     public BlockStateModel modelState;
@@ -40,5 +41,20 @@ public class BlockModelInfo {
         map.put("textures", texturesMap);
         map.put("models", modelsMap);
         return map;
+    }
+
+    @Override
+    public Map<String, ? extends IModel> getModels() {
+        return models;
+    }
+
+    @Override
+    public Map<String, ?> getTextures() {
+        return textures;
+    }
+
+    @Override
+    public void putTexture(String key, ModelTexture modelTexture) {
+        textures.put(key, modelTexture);
     }
 }

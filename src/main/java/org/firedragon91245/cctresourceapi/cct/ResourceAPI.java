@@ -2,6 +2,7 @@ package org.firedragon91245.cctresourceapi.cct;
 
 import dan200.computercraft.api.lua.*;
 import net.minecraft.block.Block;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.item.crafting.Ingredient;
@@ -214,6 +215,60 @@ public class ResourceAPI implements ILuaAPI {
         return recipies.map(ResourceLocation::toString)
                 .filter(str -> !str.isEmpty())
                 .toArray(String[]::new);
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    @LuaFunction
+    final public Map<String, Object> getItemInfo(Object filter, String tag)
+    {
+        Item item = null;
+        if(filter instanceof String)
+        {
+            String itemId = (String) filter;
+            ResourceLocation itemLocation = new ResourceLocation(itemId);
+            if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
+                return null;
+
+            item = ForgeRegistries.ITEMS.getValue(itemLocation);
+        }
+        else if(filter instanceof Map)
+        {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+            String modid = (String) filterMap.getOrDefault("modid", ".*");
+            String itemid = (String) filterMap.getOrDefault("itemid", ".*");
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern itemidRegex = Pattern.compile(itemid);
+
+            String itemId = ForgeRegistries.ITEMS.getValues().stream()
+                    .map(it -> Util.defaultIfNull(it.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
+                    .findFirst().orElse(null);
+
+            if(itemId == null)
+                return null;
+
+            ResourceLocation itemLocation = new ResourceLocation(itemId);
+            if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
+                return null;
+
+            item = ForgeRegistries.ITEMS.getValue(itemLocation);
+        }
+
+        if(item == null)
+            return null;
+
+        HashMap<String, Object> itemInfo = new HashMap<>();
+        itemInfo.put("itemid", Objects.requireNonNull(item.getRegistryName()).toString());
+        if(tag.contains("t")) // t = tags
+        {
+            itemInfo.put("tags", item.getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+        }
+        if(tag.contains("m")) // m = models + textures
+        {
+            ResourceLoading.loadItemModelInfo(item, itemInfo);
+        }
+        return itemInfo;
     }
 
     @SuppressWarnings("unused")

@@ -1,9 +1,10 @@
 package org.firedragon91245.cctresourceapi.entity;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class BlockModel {
+public class BlockModel implements IModel {
 
     public BlockModel() {
         this.textures = new HashMap<>();
@@ -22,5 +23,15 @@ public class BlockModel {
         if(display != null)
             map.put("display", display.asHashMap());
         return map;
+    }
+
+    @Override
+    public String getParent() {
+        return parent;
+    }
+
+    @Override
+    public Map<String, String> getTextures() {
+        return textures;
     }
 }
