@@ -1,7 +1,7 @@
 package org.firedragon91245.cctresourceapi.json;
 
 import com.google.gson.*;
-import com.mojang.math.Vector3f;
+import org.joml.Vector3f;
 
 import java.lang.reflect.Type;
 
