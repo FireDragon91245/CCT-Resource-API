@@ -1,6 +1,14 @@
 package org.firedragon91245.cctresourceapi.cct;
 
 import dan200.computercraft.api.lua.*;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.item.*;
+import net.minecraft.item.crafting.IRecipe;
+import net.minecraft.item.crafting.Ingredient;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.INBT;
+import net.minecraft.nbt.ListNBT;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -25,6 +33,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
@@ -174,7 +183,7 @@ public class ResourceAPI implements ILuaAPI {
         Map.Entry<Object, Color> firstEntry = entries.nextElement();
         Object closestColorKey = firstEntry.getKey();
         double closestDistance = ColorUtil.rgbDistance(color, firstEntry.getValue());
-        while(entries.hasMoreElements()) {
+        while (entries.hasMoreElements()) {
             Map.Entry<Object, Color> currentEntry = entries.nextElement();
             double distance = ColorUtil.rgbDistance(color, currentEntry.getValue());
             if (distance < closestDistance) {
@@ -192,113 +201,6 @@ public class ResourceAPI implements ILuaAPI {
         itemStackInfo.put("count", item.getCount());
         itemStackInfo.put("nbt", convertNBTtoMap(item.getTag()));
         return itemStackInfo;
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    @LuaFunction
-    final public String[] getRecipeIds(@Nullable Object filter) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        Stream<ResourceLocation> recipies = server.getRecipeManager().getRecipeIds();
-        if (filter instanceof String) {
-            return recipies.map(ResourceLocation::toString)
-                    .filter(str -> !str.isEmpty() && str.contains((String) filter))
-                    .toArray(String[]::new);
-        } else if (filter instanceof HashMap) {
-            HashMap<String, Object> filterMap = (HashMap<String, Object>) filter;
-            String modid = (String) filterMap.getOrDefault("modid", ".*");
-            String recipeid = (String) filterMap.getOrDefault("recipeid", ".*");
-
-            Pattern modidRegex = Pattern.compile(modid);
-            Pattern recipeidRegex = Pattern.compile(recipeid);
-
-            return recipies.map(ResourceLocation::toString)
-                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, recipeidRegex))
-                    .toArray(String[]::new);
-        }
-        return recipies.map(ResourceLocation::toString)
-                .filter(str -> !str.isEmpty())
-                .toArray(String[]::new);
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    @LuaFunction
-    final public Map<String, Object> getItemInfo(Object filter, String tag)
-    {
-        Item item;
-        if(filter instanceof String itemId)
-        {
-            ResourceLocation itemLocation = new ResourceLocation(itemId);
-            if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
-                return null;
-
-            item = ForgeRegistries.ITEMS.getValue(itemLocation);
-        }
-        else if(filter instanceof Map)
-        {
-            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
-            String modid = (String) filterMap.getOrDefault("modid", ".*");
-            String itemid = (String) filterMap.getOrDefault("itemid", ".*");
-
-            Pattern modidRegex = Pattern.compile(modid);
-            Pattern itemidRegex = Pattern.compile(itemid);
-
-            String itemId = ForgeRegistries.ITEMS.getValues().stream()
-                    .map(it -> Util.defaultIfNull(it.getRegistryName(), new ResourceLocation("")).toString())
-                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
-                    .findFirst().orElse(null);
-
-            if(itemId == null)
-                return null;
-
-            ResourceLocation itemLocation = new ResourceLocation(itemId);
-            if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
-                return null;
-
-            item = ForgeRegistries.ITEMS.getValue(itemLocation);
-        } else {
-            item = null;
-        }
-
-        if(item == null)
-            return null;
-
-        HashMap<String, Object> itemInfo = new HashMap<>();
-        itemInfo.put("itemid", Objects.requireNonNull(item.getRegistryName()).toString());
-        if(tag.contains("t")) // t = tags
-        {
-            ITagManager<Item> tags = ForgeRegistries.ITEMS.tags();
-            if(tags == null)
-                return null;
-            itemInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(item)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
-        }
-        if(tag.contains("m")) // m = models + textures
-        {
-            ResourceLoading.loadItemModelInfo(item, itemInfo);
-        }
-        return itemInfo;
-    }
-
-    @SuppressWarnings("unused")
-    @LuaFunction
-    final public Map<Integer, Map<Integer, Object>> imageBytesToPixelsCustomColorMap(Object image, Object colorMap, String inColorFormat) throws LuaException {
-        Map<Object, Color> customColorMap;
-        if(inColorFormat.equals("rgb-int"))
-        {
-            customColorMap = loadColorMap(colorMap, ResourceAPI::colorFromRGBInt);
-        }
-        else if(inColorFormat.equals("rgb-table"))
-        {
-            customColorMap = loadColorMap(colorMap, ResourceAPI::colorFromRGBTable);
-        }
-        else
-        {
-            throw new LuaException("Invalid color format");
-        }
-
-        if (customColorMap == null)
-            throw new LuaException("Invalid custom color map");
-
-        return ResourceLoading.loadBufferedImageFromTextureObject(image, customColorMap, ResourceAPI::bufferedImageToPixels);
     }
 
     @SuppressWarnings("unchecked")
@@ -322,43 +224,6 @@ public class ResourceAPI implements ILuaAPI {
         if (o instanceof Double) {
             int color = ((Double) o).intValue();
             return new Color(color);
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @LuaFunction
-    final public Map<Integer, Map<Integer, Object>> imageBytesToPixels(Object image, String colorFormat) throws LuaException {
-        if (colorFormat == null || colorFormat.isEmpty() || colorFormat.equals("blit")) {
-            return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_BLIT, ResourceAPI::bufferedImageToPixels);
-        } else if (colorFormat.equals("decimal")) {
-            return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_DEC, ResourceAPI::bufferedImageToPixels);
-        } else if (colorFormat.equals("rgb-int")) {
-            return ResourceLoading.loadBufferedImageFromTextureObject(image, null, ResourceAPI::bufferedImageToPixelsRGB);
-        } else if (colorFormat.equals("rgb-table")) {
-            return ResourceLoading.loadBufferedImageFromTextureObject(image, null, ResourceAPI::bufferedImageToPixelsRGBTable);
-        } else {
-            throw new LuaException("Invalid color format");
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<Object, Color> loadColorMap(@Nullable Object customColorMap, Function<Object, Color> converter) throws LuaException {
-        if (customColorMap instanceof Map) {
-            Map<Object, Object> rawMap = (Map<Object, Object>) customColorMap;
-            Map<Object, Color> colorMap = new HashMap<>();
-            for (Map.Entry<Object, Object> rawEntry : rawMap.entrySet())
-            {
-                Object key = rawEntry.getKey();
-                Object value = rawEntry.getValue();
-                if (key == null || value == null)
-                    continue;
-                @Nullable Color color = converter.apply(value);
-                if (color == null)
-                    throw new LuaException("Malformed custom color map entry");
-                colorMap.put(key, color);
-            }
-            return colorMap;
         }
         return null;
     }
@@ -402,24 +267,310 @@ public class ResourceAPI implements ILuaAPI {
         return pixels;
     }
 
+    private static Map<String, Object> recipeAsMap(IRecipe<?> recipe) {
+        Map<String, Object> recipeMap = new HashMap<>();
+        recipeMap.put("recipeid", recipe.getId().toString());
+        recipeMap.put("type", recipe.getType().toString());
+        recipeMap.put("group", recipe.getGroup());
+        recipeMap.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
+        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem()));
+        return recipeMap;
+    }
+
+    private static Map<String, Object> createBlockInfoTable(String flags, Block block) {
+        if (block == null)
+            return null;
+
+        Map<String, Object> blockInfo = new HashMap<>();
+        blockInfo.put("blockid", Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString());
+        if (flags.contains("t")) { // t = tags
+            blockInfo.put("tags", Objects.requireNonNull(block).getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+        }
+        if (flags.contains("m")) { // m = moodels + textures
+            ResourceLoading.loadBlockModelInfo(Objects.requireNonNull(block), blockInfo);
+        }
+
+        return blockInfo;
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    @LuaFunction
+    final public String[] getRecipeIds(@Nullable Object filter) throws LuaException {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        Stream<ResourceLocation> recipies = server.getRecipeManager().getRecipeIds();
+        if (filter instanceof String) {
+            return recipies.map(ResourceLocation::toString)
+                    .filter(str -> !str.isEmpty() && str.contains((String) filter))
+                    .toArray(String[]::new);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+            String modid;
+            String recipeid;
+
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                recipeid = (String) filterMap.getOrDefault("recipieid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string! Bitch!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern recipeidRegex = Pattern.compile(recipeid);
+
+            return recipies.map(ResourceLocation::toString)
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, recipeidRegex))
+                    .toArray(String[]::new);
+        }
+        return recipies.map(ResourceLocation::toString)
+                .filter(str -> !str.isEmpty())
+                .toArray(String[]::new);
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    @LuaFunction
+    final public Map<String, Object> getItemInfo(Object filter, String flags) throws LuaException {
+        Item item = null;
+        if (filter instanceof String) {
+            String itemId = (String) filter;
+            ResourceLocation itemLocation = new ResourceLocation(itemId);
+            if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
+                return null;
+
+            item = ForgeRegistries.ITEMS.getValue(itemLocation);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+            String modid;
+            String itemid;
+
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                itemid = (String) filterMap.getOrDefault("itemid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string! Bitch!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern itemidRegex = Pattern.compile(itemid);
+
+            String itemId = ForgeRegistries.ITEMS.getValues().stream()
+                    .map(it -> Util.defaultIfNull(it.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
+                    .findFirst().orElse(null);
+
+            if (itemId == null)
+                return null;
+
+            ResourceLocation itemLocation = new ResourceLocation(itemId);
+            if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
+                return null;
+
+            item = ForgeRegistries.ITEMS.getValue(itemLocation);
+        } else {
+            item = null;
+        }
+
+        return createItemInfoTable(item, flags);
+    }
+
+    private Map<String, Object> createItemInfoTable(Item item, String flags) {
+        if (item == null)
+            return null;
+
+        HashMap<String, Object> itemInfo = new HashMap<>();
+        itemInfo.put("itemid", Objects.requireNonNull(item.getRegistryName()).toString());
+        if (flags.contains("t")) // t = tags
+        {
+            ITagManager<Item> tags = ForgeRegistries.ITEMS.tags();
+            if(tags == null)
+                return null;
+            itemInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(item)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
+        }
+        if (flags.contains("m")) // m = models + textures
+        {
+            ResourceLoading.loadItemModelInfo(item, itemInfo);
+        }
+        if(flags.contains("g"))
+        {
+            itemAddGeneralInfo(itemInfo, item);
+        }
+        if(flags.contains("e"))
+        {
+            AtomicInteger index = new AtomicInteger(1);
+            itemInfo.put("enchantments", ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .filter(enchantment -> enchantment.canEnchant(new ItemStack(item)) || item.canApplyAtEnchantingTable(new ItemStack(item), enchantment))
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry)));
+        }
+        return itemInfo;
+    }
+
+    private void itemAddGeneralInfo(HashMap<String, Object> itemInfo, Item item) {
+        itemInfo.put("fireResistant", item.isFireResistant());
+        itemInfo.put("enchantable", item.isEnchantable(new ItemStack(item)));
+        itemInfo.put("damageable", item.isDamageable(new ItemStack(item)));
+        itemInfo.put("repairable", item.isRepairable(new ItemStack(item)));
+        itemInfo.put("stackSize", new ItemStack(item).getMaxStackSize());
+        itemInfo.put("foodItem", item.isEdible());
+        itemInfo.put("rarity", item.getRarity(new ItemStack(item)).toString());
+
+        if(item.isEdible())
+        {
+            itemInfo.put("food", foodAsHashMap(Objects.requireNonNull(item.getFoodProperties())));
+        }
+        
+        if(isToolItem(item))
+        {
+            itemInfo.put("tool", toolAsHashMap(item));
+        }
+
+    }
+
+    private Map<String, Object> toolAsHashMap(Item item) {
+        Map<String, Object> result = new HashMap<>();
+        if(item instanceof TieredItem)
+        {
+            TieredItem tieredItem = (TieredItem) item;
+            result.put("tier", tieredItemAsHashMap(tieredItem));
+        }
+        if(item instanceof ArmorItem)
+        {
+            ArmorItem armorItem = (ArmorItem) item;
+            result.put("armor", armorItemAsHashMap(armorItem));
+        }
+        if(item instanceof ToolItem)
+        {
+            ToolItem toolItem = (ToolItem) item;
+            result.put("tool", toolItemAsHashMap(toolItem));
+        }
+        if(item instanceof BowItem)
+        {
+            BowItem bowItem = (BowItem) item;
+            result.put("bow", bowItemAsHashMap(bowItem));
+        }
+
+        return result;
+    }
+
+    private Map<String, Object> bowItemAsHashMap(BowItem bowItem) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("maxUseDuration", bowItem.getUseDuration(new ItemStack(bowItem)));
+        return result;
+    }
+
+    private Map<String, Object> toolItemAsHashMap(ToolItem toolItem) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("attackDamage", toolItem.getAttackDamage());
+        result.put("breakSpeed", toolItem.getDestroySpeed(new ItemStack(toolItem), Blocks.STONE.defaultBlockState()));
+        return result;
+    }
+
+    private Map<String, Object> armorItemAsHashMap(ArmorItem armorItem) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("slot", armorItem.getSlot().getName());
+        result.put("defense", armorItem.getDefense());
+        result.put("toughness", armorItem.getToughness());
+        result.put("material", armorMaterialAsHashMap(armorItem.getMaterial()));
+        return result;
+    }
+
+    private Map<String, Object> armorMaterialAsHashMap(IArmorMaterial material) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("name", material.getName());
+        result.put("repairMaterial", ingredientAsHashMap(material.getRepairIngredient()));
+        result.put("enchantability", material.getEnchantmentValue());
+        result.put("knockbackResistance", material.getKnockbackResistance());
+        return result;
+    }
+
+    private Map<String, Object> tieredItemAsHashMap(TieredItem tieredItem) {
+        Map<String, Object> result = new HashMap<>();
+        IItemTier tier = tieredItem.getTier();
+        result.put("level", tier.getLevel());
+        result.put("maxUses", tier.getUses());
+        result.put("speed", tier.getSpeed());
+        result.put("damageBonus", tier.getAttackDamageBonus());
+        result.put("enchantability", tier.getEnchantmentValue());
+        result.put("repairMaterial", ingredientAsHashMap(tier.getRepairIngredient()));
+        return result;
+    }
+
+    private boolean isToolItem(Item item) {
+        return item instanceof ArmorItem || item instanceof ShieldItem || item instanceof BowItem || item instanceof CrossbowItem || item instanceof TieredItem || item instanceof SwordItem || item instanceof PickaxeItem || item instanceof AxeItem || item instanceof ShovelItem || item instanceof HoeItem;
+    }
+
+    private Map<String, Object> foodAsHashMap(Food food) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("nutrition", food.getNutrition());
+        result.put("saturation", food.getSaturationModifier());
+        result.put("meat", food.isMeat());
+        result.put("fast", food.isFastFood());
+        result.put("alwaysEdible", food.canAlwaysEat());
+        return result;
+    }
+
+    @SuppressWarnings("unused")
+    @LuaFunction
+    final public Map<Integer, Map<Integer, Object>> imageBytesToPixelsCustomColorMap(Object image, Object colorMap, String inColorFormat) throws LuaException {
+        Map<Object, Color> customColorMap;
+        if (inColorFormat.equals("rgb-int")) {
+            customColorMap = loadColorMap(colorMap, ResourceAPI::colorFromRGBInt);
+        } else if (inColorFormat.equals("rgb-table")) {
+            customColorMap = loadColorMap(colorMap, ResourceAPI::colorFromRGBTable);
+        } else {
+            throw new LuaException("Invalid color format");
+        }
+
+        if (customColorMap == null)
+            throw new LuaException("Invalid custom color map");
+
+        return ResourceLoading.loadBufferedImageFromTextureObject(image, customColorMap, ResourceAPI::bufferedImageToPixels);
+    }
+
+    @SuppressWarnings("unused")
+    @LuaFunction
+    final public Map<Integer, Map<Integer, Object>> imageBytesToPixels(Object image, String colorFormat) throws LuaException {
+        if (colorFormat == null || colorFormat.isEmpty() || colorFormat.equals("blit")) {
+            return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_BLIT, ResourceAPI::bufferedImageToPixels);
+        } else if (colorFormat.equals("decimal")) {
+            return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_DEC, ResourceAPI::bufferedImageToPixels);
+        } else if (colorFormat.equals("rgb-int")) {
+            return ResourceLoading.loadBufferedImageFromTextureObject(image, null, ResourceAPI::bufferedImageToPixelsRGB);
+        } else if (colorFormat.equals("rgb-table")) {
+            return ResourceLoading.loadBufferedImageFromTextureObject(image, null, ResourceAPI::bufferedImageToPixelsRGBTable);
+        } else {
+            throw new LuaException("Invalid color format");
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<Object, Color> loadColorMap(@Nullable Object customColorMap, Function<Object, Color> converter) throws LuaException {
+        if (customColorMap instanceof Map) {
+            Map<Object, Object> rawMap = (Map<Object, Object>) customColorMap;
+            Map<Object, Color> colorMap = new HashMap<>();
+            for (Map.Entry<Object, Object> rawEntry : rawMap.entrySet()) {
+                Object key = rawEntry.getKey();
+                Object value = rawEntry.getValue();
+                if (key == null || value == null)
+                    continue;
+                @Nullable Color color = converter.apply(value);
+                if (color == null)
+                    throw new LuaException("Malformed custom color map entry");
+                colorMap.put(key, color);
+            }
+            return colorMap;
+        }
+        return null;
+    }
+
     @SuppressWarnings("unused")
     @LuaFunction
     final public String imageBytesToCCFormat(Object image) throws LuaException {
         return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_BLIT, ResourceAPI::convertBufferedImageToCCString);
     }
 
-    private static void addRecipeToMap(Map<String, Object> recipeMap, Recipe<?> recipe)
-    {
-        recipeMap.put("recipeid", recipe.getId().toString());
-        recipeMap.put("type", recipe.getType().toString());
-        recipeMap.put("group", recipe.getGroup());
-        recipeMap.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
-        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem()));
-    }
-
     @SuppressWarnings({"unchecked", "unused"})
     @LuaFunction
-    final public HashMap<String, Object> getRecipeInfo(Object filter) {
+    final public Map<String, Object> getRecipeInfo(Object filter) {
         if (filter == null)
             return null;
 
@@ -427,36 +578,104 @@ public class ResourceAPI implements ILuaAPI {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (filter instanceof String recipeId) {
             ResourceLocation recipeLocation = new ResourceLocation(recipeId);
+
             Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
-            recipes.stream().filter(recipe -> recipe.getId().equals(recipeLocation)).findFirst().ifPresent(recipe -> addRecipeToMap(recipeInfo, recipe));
-            return recipeInfo;
+            Optional<Recipe<?>> recipe = recipes.stream().filter(r -> r.getId().equals(recipeLocation)).findFirst();
+
+            if (recipe.isPresent())
+            {
+                return recipeAsMap(recipe.get());
+            }
         } else if (filter instanceof Map) {
-            Map<String, Object> filterMap = (Map<String, Object>) filter;
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
             Predicate<Recipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
             Predicate<Recipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
             Predicate<Recipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
 
             Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
-            recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst().ifPresent(recipe -> addRecipeToMap(recipeInfo, recipe));
+            Optional<Recipe<?>> recipe = recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst();
 
-            return recipeInfo;
+            if(recipe.isPresent())
+            {
+                return recipeAsMap(recipe.get());
+            }
         }
         return null;
     }
 
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Map<String, Object>> getRecipeInfos(Object filter) throws LuaException {
+        if(filter instanceof Map)
+        {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            Predicate<IRecipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
+            Predicate<IRecipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
+            Predicate<IRecipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
+
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
+            AtomicInteger index = new AtomicInteger(1);
+            return recipes.stream()
+                    .filter(simpleFilter.and(resultFilter).and(ingredientFilter))
+                    .map(ResourceAPI::recipeAsMap)
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+
+        }
+        else
+        {
+            throw new LuaException("Filter is not a table!");
+        }
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Map<String, Object>> getItemInfos(Object filter, String flags) throws LuaException {
+        if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+            String modid;
+            String itemid;
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                itemid = (String) filterMap.getOrDefault("itemid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern itemidRegex = Pattern.compile(itemid);
+
+            AtomicInteger index = new AtomicInteger(1);
+            return ForgeRegistries.ITEMS.getValues().stream()
+                    .filter(it -> ResourceFiltering.filterIds(Util.defaultIfNull(it.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, itemidRegex))
+                    .map(it -> createItemInfoTable(it, flags))
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+        } else {
+            throw new LuaException("Filter is not a table!");
+        }
+    }
+
     @SuppressWarnings({"unchecked", "unused"})
     @LuaFunction
-    final public String[] getBlockIds(@Nullable Object filter) {
+    final public String[] getBlockIds(@Nullable Object filter) throws LuaException {
         if (filter instanceof String) {
             return ForgeRegistries.BLOCKS.getValues().stream()
                     .map(block -> Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty() && str.contains((String) filter))
                     .toArray(String[]::new);
-        } else if (filter instanceof HashMap) {
-            HashMap<String, Object> filterMap = (HashMap<String, Object>) filter;
-            String modid = (String) filterMap.getOrDefault("modid", ".*");
-            String blockid = (String) filterMap.getOrDefault("blockid", ".*");
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String blockid;
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                blockid = (String) filterMap.getOrDefault("blockid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
 
             Pattern modidRegex = Pattern.compile(modid);
             Pattern itemidRegex = Pattern.compile(blockid);
@@ -466,25 +685,35 @@ public class ResourceAPI implements ILuaAPI {
                     .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
                     .toArray(String[]::new);
 
+        } else if (filter == null) {
+            return ForgeRegistries.BLOCKS.getValues().stream()
+                    .map(block -> Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty())
+                    .toArray(String[]::new);
+        } else {
+            throw new LuaException("Filter is not nil, string or table!");
         }
-        return ForgeRegistries.BLOCKS.getValues().stream()
-                .map(block -> Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString())
-                .filter(str -> !str.isEmpty())
-                .toArray(String[]::new);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
     @LuaFunction
-    final public String[] getItemIds(@Nullable Object filter) {
+    final public String[] getItemIds(@Nullable Object filter) throws LuaException {
         if (filter instanceof String) {
             return ForgeRegistries.ITEMS.getValues().stream()
                     .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty() && str.contains((String) filter))
                     .toArray(String[]::new);
-        } else if (filter instanceof HashMap) {
-            HashMap<String, Object> filterMap = (HashMap<String, Object>) filter;
-            String modid = (String) filterMap.getOrDefault("modid", ".*");
-            String itemid = (String) filterMap.getOrDefault("itemid", ".*");
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String itemid;
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                itemid = (String) filterMap.getOrDefault("itemid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string!");
+            }
 
             Pattern modidRegex = Pattern.compile(modid);
             Pattern itemidRegex = Pattern.compile(itemid);
@@ -501,30 +730,76 @@ public class ResourceAPI implements ILuaAPI {
                 .toArray(String[]::new);
     }
 
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "unchecked"})
     @LuaFunction
-    final public HashMap<String, Object> getBlockInfo(String blockId, String flags) {
-        if (blockId.isEmpty())
-            return null;
+    final public Map<Integer, Map<String, Object>> getBlockInfos(Object filter, String flags) throws LuaException {
+        if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
-        ResourceLocation blockLocation = new ResourceLocation(blockId);
-        if (!ForgeRegistries.BLOCKS.containsKey(blockLocation))
-            return null;
+            String modid;
+            String blockid;
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                blockid = (String) filterMap.getOrDefault("blockid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string!");
+            }
 
-        Block b = ForgeRegistries.BLOCKS.getValue(blockLocation);
-        HashMap<String, Object> blockInfo = new HashMap<>();
-        blockInfo.put("blockid", blockLocation.toString());
-        if (flags.contains("t")) { // t = tags
-            ITagManager<Block> tags = ForgeRegistries.BLOCKS.tags();
-            if (tags == null)
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern blockidRegex = Pattern.compile(blockid);
+
+            AtomicInteger index = new AtomicInteger(1);
+            return ForgeRegistries.BLOCKS.getValues().stream()
+                    .filter(b -> ResourceFiltering.filterIds(Util.defaultIfNull(b.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, blockidRegex))
+                    .map(b -> createBlockInfoTable(flags, b))
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+        } else {
+            throw new LuaException("Filter is not a table!");
+        }
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<String, Object> getBlockInfo(Object filter, String flags) throws LuaException {
+        Block block;
+        if (filter instanceof String) {
+            String blockid = (String) filter;
+            ResourceLocation blockLocation = new ResourceLocation(blockid);
+
+            block = ForgeRegistries.BLOCKS.getValue(blockLocation);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String blockid;
+
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                blockid = (String) filterMap.getOrDefault("blockid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string! Bitch!");
+            }
+
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern blockidRegex = Pattern.compile(blockid);
+
+            String blockId = ForgeRegistries.BLOCKS.getValues().stream()
+                    .map(b -> Util.defaultIfNull(b.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, blockidRegex))
+                    .findFirst().orElse(null);
+
+            if (blockId == null)
                 return null;
-            blockInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(b)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
-        }
-        if (flags.contains("m")) { // m = moodels + textures
-            ResourceLoading.loadBlockModelInfo(Objects.requireNonNull(b), blockInfo);
+
+            ResourceLocation blockLocation = new ResourceLocation(blockId);
+
+            block = ForgeRegistries.BLOCKS.getValue(blockLocation);
+        } else {
+            throw new LuaException("Filter is not a string (blockid) or table!");
         }
 
-        return blockInfo;
+        return createBlockInfoTable(flags, block);
     }
 
     @Override
