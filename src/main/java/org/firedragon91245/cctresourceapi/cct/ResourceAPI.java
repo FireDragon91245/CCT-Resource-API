@@ -3,6 +3,7 @@ package org.firedragon91245.cctresourceapi.cct;
 import dan200.computercraft.api.lua.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.item.*;
 import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.item.crafting.Ingredient;
@@ -14,6 +15,7 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.firedragon91245.cctresourceapi.ColorUtil;
+import org.firedragon91245.cctresourceapi.OneOrMore;
 import org.firedragon91245.cctresourceapi.Util;
 
 import javax.annotation.Nonnull;
@@ -784,6 +786,164 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return createBlockInfoTable(flags, block);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public String[] getEnchantmentIds(@Nullable Object filter) throws LuaException {
+        if(filter instanceof String)
+        {
+            String filterString = (String) filter;
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty() && str.contains(filterString))
+                    .toArray(String[]::new);
+        }
+        else if(filter instanceof Map)
+        {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String enchantmentid;
+
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                enchantmentid = (String) filterMap.getOrDefault("enchantmentid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern enchantmentidRegex = Pattern.compile(enchantmentid);
+
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, enchantmentidRegex))
+                    .toArray(String[]::new);
+        }
+        else if(filter == null)
+        {
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty())
+                    .toArray(String[]::new);
+        }
+        else
+        {
+            throw new LuaException("Filter is not a string, table or nil!");
+        }
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<String, Object> getEnchantmentInfo(Object filter, String flags) throws LuaException {
+        Enchantment enchantment;
+        if(filter instanceof String)
+        {
+            String enchantmentId = (String) filter;
+            ResourceLocation enchantmentLocation = new ResourceLocation(enchantmentId);
+            enchantment = ForgeRegistries.ENCHANTMENTS.getValue(enchantmentLocation);
+        }
+        else if(filter instanceof Map)
+        {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String enchantmentid;
+
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                enchantmentid = (String) filterMap.getOrDefault("enchantmentid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern enchantmentidRegex = Pattern.compile(enchantmentid);
+
+            String enchantmentId = ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(e -> Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, enchantmentidRegex))
+                    .findFirst().orElse(null);
+
+            if(enchantmentId == null)
+                return null;
+
+            ResourceLocation enchantmentLocation = new ResourceLocation(enchantmentId);
+            enchantment = ForgeRegistries.ENCHANTMENTS.getValue(enchantmentLocation);
+        }
+        else
+        {
+            throw new LuaException("Filter is not a string or table!");
+        }
+
+        return createEnchantmentInfoTable(enchantment, flags);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Map<String, Object>> getEnchantmentInfos(Object filter, String flags) throws LuaException {
+        if(filter instanceof Map)
+        {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String enchantmentid;
+
+            try{
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                enchantmentid = (String) filterMap.getOrDefault("enchantmentid", ".*");
+            } catch (ClassCastException ignored){
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern enchantmentidRegex = Pattern.compile(enchantmentid);
+
+            AtomicInteger index = new AtomicInteger(1);
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .filter(e -> ResourceFiltering.filterIds(Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, enchantmentidRegex))
+                    .map(e -> createEnchantmentInfoTable(e, flags))
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+        }
+        else
+        {
+            throw new LuaException("Filter is not a table!");
+        }
+    }
+
+    private Map<String, Object> createEnchantmentInfoTable(Enchantment enchantment, String flags) {
+        if(enchantment == null)
+            return null;
+
+        HashMap<String, Object> enchantmentInfo = new HashMap<>();
+        enchantmentInfo.put("enchantmentid", Objects.requireNonNull(enchantment.getRegistryName()).toString());
+        if(flags.contains("t"))
+        {
+            enchantmentInfo.put("tags", enchantment.getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+        }
+        if(flags.contains("g"))
+        {
+            enchantmentAddGeneralInfo(enchantmentInfo, enchantment);
+        }
+        return enchantmentInfo;
+    }
+
+    private void enchantmentAddGeneralInfo(HashMap<String, Object> enchantmentInfo, Enchantment enchantment) {
+        enchantmentInfo.put("maxLevel", enchantment.getMaxLevel());
+        enchantmentInfo.put("rarity", enchantment.getRarity().toString());
+        enchantmentInfo.put("curse", enchantment.isCurse());
+        enchantmentInfo.put("treasureOnly", enchantment.isTreasureOnly());
+        enchantmentInfo.put("tradeable", enchantment.isTradeable());
+        enchantmentInfo.put("discoverable", enchantment.isDiscoverable());
+        enchantmentInfo.put("minLevel", enchantment.getMinLevel());
+
+        AtomicInteger index = new AtomicInteger(1);
+        enchantmentInfo.put("items", ForgeRegistries.ITEMS.getValues().stream()
+                .filter(item -> item.canApplyAtEnchantingTable(new ItemStack(item), enchantment) || enchantment.canEnchant(new ItemStack(item)))
+                .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
+                .filter(str -> !str.isEmpty())
+                .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry)));
     }
 
     @Override
