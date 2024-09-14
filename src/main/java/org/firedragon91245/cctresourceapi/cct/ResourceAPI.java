@@ -9,10 +9,21 @@ import net.minecraft.item.crafting.Ingredient;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.block.Block;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.tags.ITag;
+import net.minecraftforge.registries.tags.ITagManager;
+import net.minecraftforge.server.ServerLifecycleHooks;
 import org.firedragon91245.cctresourceapi.ColorUtil;
 import org.firedragon91245.cctresourceapi.Util;
 
@@ -31,7 +42,7 @@ import java.util.stream.Stream;
 
 public class ResourceAPI implements ILuaAPI {
 
-    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<Object, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<>() {{
         put(0, new Color(240, 240, 240));   // 1: white
         put(1, new Color(242, 178, 51));    // 2: orange
         put(2, new Color(229, 127, 216));   // 4: magenta
@@ -50,7 +61,7 @@ public class ResourceAPI implements ILuaAPI {
         put('f', new Color(17, 17, 17));       // 32768: black
     }};
 
-    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<Object, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<>() {{
         put(1, new Color(240, 240, 240));   // 1: white
         put(2, new Color(242, 178, 51));    // 2: orange
         put(4, new Color(229, 127, 216));   // 4: magenta
@@ -92,20 +103,20 @@ public class ResourceAPI implements ILuaAPI {
         return ingredientsInfo;
     }
 
-    private static Map<String, Object> convertNBTtoMap(@Nullable CompoundNBT compoundNBT) {
+    private static Map<String, Object> convertNBTtoMap(@Nullable CompoundTag compoundNBT) {
         if (compoundNBT == null)
             return null;
         Map<String, Object> map = new HashMap<>();
 
         for (String key : compoundNBT.getAllKeys()) {
-            INBT value = compoundNBT.get(key);
+            Tag value = compoundNBT.get(key);
             if (value == null)
                 continue;
 
-            if (value instanceof CompoundNBT) {
-                map.put(key, convertNBTtoMap((CompoundNBT) value));
-            } else if (value instanceof ListNBT) {
-                map.put(key, convertListNBTtoList((ListNBT) value));
+            if (value instanceof CompoundTag) {
+                map.put(key, convertNBTtoMap((CompoundTag) value));
+            } else if (value instanceof ListTag) {
+                map.put(key, convertListNBTtoList((ListTag) value));
             } else {
                 map.put(key, value.getAsString());
             }
@@ -114,14 +125,14 @@ public class ResourceAPI implements ILuaAPI {
         return map;
     }
 
-    private static List<Object> convertListNBTtoList(ListNBT listNBT) {
+    private static List<Object> convertListNBTtoList(ListTag listNBT) {
         List<Object> list = new ArrayList<>();
 
-        for (INBT element : listNBT) {
-            if (element instanceof CompoundNBT) {
-                list.add(convertNBTtoMap((CompoundNBT) element));
-            } else if (element instanceof ListNBT) {
-                list.add(convertListNBTtoList((ListNBT) element));
+        for (Tag element : listNBT) {
+            if (element instanceof CompoundTag) {
+                list.add(convertNBTtoMap((CompoundTag) element));
+            } else if (element instanceof ListTag) {
+                list.add(convertListNBTtoList((ListTag) element));
             } else {
                 list.add(element.getAsString());
             }
@@ -354,6 +365,8 @@ public class ResourceAPI implements ILuaAPI {
                 return null;
 
             item = ForgeRegistries.ITEMS.getValue(itemLocation);
+        } else {
+            item = null;
         }
 
         return createItemInfoTable(item, flags);
@@ -367,7 +380,10 @@ public class ResourceAPI implements ILuaAPI {
         itemInfo.put("itemid", Objects.requireNonNull(item.getRegistryName()).toString());
         if (flags.contains("t")) // t = tags
         {
-            itemInfo.put("tags", item.getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+            ITagManager<Item> tags = ForgeRegistries.ITEMS.tags();
+            if(tags == null)
+                return null;
+            itemInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(item)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
         if (flags.contains("m")) // m = models + textures
         {
@@ -560,11 +576,11 @@ public class ResourceAPI implements ILuaAPI {
 
         HashMap<String, Object> recipeInfo = new HashMap<>();
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (filter instanceof String) {
-            String recipeId = (String) filter;
+        if (filter instanceof String recipeId) {
             ResourceLocation recipeLocation = new ResourceLocation(recipeId);
-            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
-            Optional<IRecipe<?>> recipe = recipes.stream().filter(r -> r.getId().equals(recipeLocation)).findFirst();
+
+            Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
+            Optional<Recipe<?>> recipe = recipes.stream().filter(r -> r.getId().equals(recipeLocation)).findFirst();
 
             if (recipe.isPresent())
             {
@@ -573,12 +589,12 @@ public class ResourceAPI implements ILuaAPI {
         } else if (filter instanceof Map) {
             Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
-            Predicate<IRecipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
-            Predicate<IRecipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
-            Predicate<IRecipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
+            Predicate<Recipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
+            Predicate<Recipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
+            Predicate<Recipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
 
-            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
-            Optional<IRecipe<?>> recipe = recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst();
+            Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
+            Optional<Recipe<?>> recipe = recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst();
 
             if(recipe.isPresent())
             {

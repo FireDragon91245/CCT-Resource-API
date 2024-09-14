@@ -13,9 +13,8 @@ public class OneOrMoreSerializer implements JsonDeserializer<OneOrMore<?>>, Json
     public OneOrMore<?> deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
         if(jsonElement.isJsonArray())
         {
-            if(type instanceof ParameterizedType)
+            if(type instanceof ParameterizedType genericType)
             {
-                ParameterizedType genericType = (ParameterizedType) type;
                 Object result = jsonDeserializationContext.deserialize(jsonElement, new ParameterizedType() {
                     @Override
                     public Type[] getActualTypeArguments() {
@@ -32,15 +31,13 @@ public class OneOrMoreSerializer implements JsonDeserializer<OneOrMore<?>>, Json
                         return null;
                     }
                 });
-                if(result instanceof List)
+                if(result instanceof List<?> list)
                 {
-                    List<?> list = (List<?>) result;
                     return OneOrMore.fromMore(list);
                 }
             }
         } else if (jsonElement.isJsonObject()) {
-            if (type instanceof ParameterizedType) {
-                ParameterizedType genericType = (ParameterizedType) type;
+            if (type instanceof ParameterizedType genericType) {
                 Object result = jsonDeserializationContext.deserialize(jsonElement, genericType.getActualTypeArguments()[0]);
                 return OneOrMore.fromOne(result);
             }
