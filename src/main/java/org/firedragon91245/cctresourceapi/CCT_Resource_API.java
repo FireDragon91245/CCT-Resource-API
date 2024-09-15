@@ -10,10 +10,10 @@ import org.apache.logging.log4j.Logger;
 import org.firedragon91245.cctresourceapi.entity.BlockStateModel;
 import org.firedragon91245.cctresourceapi.entity.BlockStateModelVariant;
 import org.firedragon91245.cctresourceapi.cct.ResourceAPI;
-import org.firedragon91245.cctresourceapi.json.BlockStateModelSerializer;
-import org.firedragon91245.cctresourceapi.json.BlockStateModelVariantSerializer;
-import org.firedragon91245.cctresourceapi.json.OneOrMoreSerializer;
-import org.firedragon91245.cctresourceapi.json.Vector3fSerializer;
+import org.firedragon91245.cctresourceapi.json.*;
+
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioSystem;
 
 @Mod("cct_resource_api")
 public class CCT_Resource_API {
@@ -24,11 +24,17 @@ public class CCT_Resource_API {
             .registerTypeAdapter(OneOrMore.class, new OneOrMoreSerializer())
             .registerTypeAdapter(BlockStateModel.class, new BlockStateModelSerializer())
             .registerTypeAdapter(Vector3f.class, new Vector3fSerializer())
+            .registerTypeAdapter(VariantArray.class, new VariantArraySerializer())
             .create();
 
     public CCT_Resource_API() {
 
         ComputerCraftAPI.registerAPIFactory(new ResourceAPI.Factory());
+
+        AudioFileFormat.Type[] t = AudioSystem.getAudioFileTypes();
+        for (AudioFileFormat.Type type : t) {
+            LOGGER.info(type.getExtension());
+        }
 
     }
 }

@@ -3,6 +3,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 
@@ -122,11 +123,17 @@ repositories {
     // flatDir {
     //     dir 'libs'
     // }
+    mavenCentral()
 
     maven {
         name = 'cc-tweaked'
         url = 'https://maven.squiddev.cc/'
     }
+}
+
+configurations {
+    shade
+    implementation.extendsFrom shade
 }
 
 dependencies {
@@ -138,6 +145,12 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
     implementation fg.deobf("org.squiddev:cc-tweaked-${cc_tweaked_version}")
+
+    shade 'com.googlecode.soundlibs:tritonus-share:0.3.7.4'
+    shade 'com.googlecode.soundlibs:jorbis:0.0.17.4'
+    shade 'com.googlecode.soundlibs:vorbisspi:1.0.3.3'
+    shade 'org.apache.tika:tika-core:2.9.2'
+
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -153,6 +166,20 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+shadowJar {
+    configurations = [project.configurations.shade]
+
+    archiveClassifier.set('')
+
+    archiveFileName.set("${mod_id}-${minecraft_version}-${mod_version}.jar")
+
+    mergeServiceFiles()
+
+    finalizedBy 'reobfShadowJar'
+
+    relocate '.*', 'org.firedragon91245.cctresourceapi.shadow'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -196,8 +223,14 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 
-tasks.jar {
+jar {
+    archiveClassifier = 'slim'
     manifest {
-        setArchiveFileName("${mod_id}-${minecraft_version}-${mod_version}.jar")
     }
+}
+
+assemble.dependsOn shadowJar
+
+reobf {
+    shadowJar {}
 }
