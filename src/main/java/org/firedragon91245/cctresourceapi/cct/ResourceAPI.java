@@ -1,5 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import cc.tweaked.internal.cobalt.Lua;
 import dan200.computercraft.api.lua.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -1023,6 +1024,16 @@ public class ResourceAPI implements ILuaAPI {
             result.put("data", info.soundNamesStream()
                     .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, ResourceLoading.loadSoundData(soundName)))
                     .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().asHashMap()))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
+        }
+        if(flags.contains("s")) // stream
+        {
+            if (info == null)
+                info = ResourceLoading.getSoundInfo(soundEvent);
+            if (info == null)
+                return null;
+            result.put("stream", info.soundNamesStream()
+                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, new LuaAudioStreamProvider(soundName)))
                     .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
         }
 

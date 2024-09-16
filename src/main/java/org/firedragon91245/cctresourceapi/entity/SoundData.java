@@ -33,8 +33,10 @@ public class SoundData {
         result.put("frameRate", frameRate);
         result.put("durationInSeconds", durationInSeconds);
         result.put("mimeType", mimeType);
-        AtomicInteger counter = new AtomicInteger(1);
-        result.put("byteData", Arrays.stream(boxBytes(byteData)).collect(Collectors.toMap(b -> counter.getAndIncrement(), b -> b)));
+        if(byteData != null) {
+            AtomicInteger counter = new AtomicInteger(1);
+            result.put("byteData", Arrays.stream(boxBytes(byteData)).collect(Collectors.toMap(b -> counter.getAndIncrement(), b -> b)));
+        }
         return result;
     }
 

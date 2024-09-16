@@ -528,6 +528,37 @@ public class ResourceLoading {
         return new JsonReader(new InputStreamReader(jsonStream));
     }
 
+    public static AudioInputStream loadSoundStream(String soundName) {
+        if (!soundName.contains(":")) {
+            soundName = "minecraft:" + soundName;
+        }
+
+        if (soundName.startsWith("minecraft:")) {
+            return loadFileBundledSoundStream("bundled_resources/minecraft/sounds/" + soundName.split(":")[1] + ".ogg");
+        } else {
+            URL jarUrl = getModURLFromModId(soundName.split(":")[0]);
+            if (jarUrl == null)
+                return null;
+
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
+                return loadFileSoundStream(loader, "assets/" + soundName.split(":")[0] + "/sounds/" + soundName.split(":")[1] + ".ogg");
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+        }
+        return null;
+    }
+
+    private static AudioInputStream loadFileSoundStream(URLClassLoader loader, String s) {
+        try {
+            InputStream soundStream = loader.getResourceAsStream(s);
+            return AudioSystem.getAudioInputStream(soundStream);
+        } catch (IOException | UnsupportedAudioFileException e) {
+            CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
+        }
+        return null;
+    }
+
     public static SoundData loadSoundData(String soundName) {
         if (!soundName.contains(":")) {
             soundName = "minecraft:" + soundName;
@@ -586,6 +617,16 @@ public class ResourceLoading {
             AudioFormat format = audioInputStream.getFormat();
 
             return soundDataFromAudioStream(s, soundStream, audioInputStream, format);
+        } catch (IOException | UnsupportedAudioFileException e) {
+            CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
+        }
+        return null;
+    }
+
+    private static AudioInputStream loadFileBundledSoundStream(String s) {
+        try {
+            InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s);
+            return AudioSystem.getAudioInputStream(soundStream);
         } catch (IOException | UnsupportedAudioFileException e) {
             CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
         }
