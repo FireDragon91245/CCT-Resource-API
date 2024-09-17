@@ -9,16 +9,16 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import java.util.Map;
 
-public class LuaAudioStreamProvider {
+public class LuaSoundStreamProvider {
 
     private final String audioLocation;
 
-    public LuaAudioStreamProvider(String audioLocation) {
+    public LuaSoundStreamProvider(String audioLocation) {
         this.audioLocation = audioLocation;
     }
 
     @LuaFunction
-    final public String getAudioLocation() {
+    final public String getSoundLocation() {
         return audioLocation;
     }
 
@@ -47,7 +47,7 @@ public class LuaAudioStreamProvider {
     }
 
     @LuaFunction
-    final public Map<String, Object> getAudioInfo() throws LuaException {
+    final public Map<String, Object> getSoundInfo() throws LuaException {
         try (AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation)) {
             if (base_stream == null)
                 return null;

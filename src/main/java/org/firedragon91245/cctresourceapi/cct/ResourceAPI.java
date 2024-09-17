@@ -1029,7 +1029,7 @@ public class ResourceAPI implements ILuaAPI {
             if (info == null)
                 return null;
             result.put("stream", info.soundNamesStream()
-                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, new LuaAudioStreamProvider(soundName)))
+                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, new LuaSoundStreamProvider(soundName)))
                     .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
         }
 
@@ -1098,6 +1098,36 @@ public class ResourceAPI implements ILuaAPI {
 
         }
         throw new LuaException("Invalid sound data");
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Map<String, Object>> getSoundInfos(Object filter, String flags)
+    {
+        if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String soundid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                soundid = (String) filterMap.getOrDefault("soundid", ".*");
+            } catch (ClassCastException ignored) {
+                return null;
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern soundidRegex = Pattern.compile(soundid);
+
+            AtomicInteger index = new AtomicInteger(1);
+            return ForgeRegistries.SOUND_EVENTS.getValues().stream()
+                    .filter(e -> ResourceFiltering.filterIds(Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, soundidRegex))
+                    .map(e -> createSoundInfoTable(e, flags))
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+        } else {
+            return null;
+        }
     }
 
     @Override
