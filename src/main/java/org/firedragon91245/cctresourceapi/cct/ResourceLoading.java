@@ -476,6 +476,8 @@ public class ResourceLoading {
             try (JsonReader soundsJson = loadBundledFileJson("bundled_resources/minecraft/sounds.json")) {
                 if (soundEvent.getRegistryName() == null)
                     return null;
+                if(soundsJson == null)
+                    return null;
                 return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
             } catch (IOException ignored) {
             }
@@ -487,6 +489,8 @@ public class ResourceLoading {
             try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 try (JsonReader soundsJson = loadFileJson(loader, "assets/" + soundId.getNamespace() + "/sounds.json")) {
                     if (soundEvent.getRegistryName() == null)
+                        return null;
+                    if(soundsJson == null)
                         return null;
                     return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
                 } catch (IOException ignored) {
@@ -669,6 +673,26 @@ public class ResourceLoading {
         // Convert the audio to the target format
         AudioInputStream convertedAudio = AudioSystem.getAudioInputStream(targetFormat, originalAudio);
 
-        return new PCM16to8ByteArrayOutputStream(convertedAudio);
+        PcmSigned16To8ResampleStream resampledAudio = new PcmSigned16To8ResampleStream(convertedAudio);
+        ByteArrayOutputStream out = readEverythingToByteOutputStream(resampledAudio);
+        resampledAudio.close();
+
+        return out;
+    }
+
+    private static ByteArrayOutputStream readEverythingToByteOutputStream(InputStream stream) {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096]; // 4KB buffer
+        int bytesRead;
+
+        try {
+            while ((bytesRead = stream.read(buffer)) != -1) {
+                byteStream.write(buffer, 0, bytesRead);
+            }
+        } catch (IOException e) {
+            CCT_Resource_API.LOGGER.error("Failed to read audio data", e);
+        }
+
+        return byteStream;
     }
 }

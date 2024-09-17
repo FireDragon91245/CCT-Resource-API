@@ -1,6 +1,5 @@
 package org.firedragon91245.cctresourceapi.cct;
 
-import cc.tweaked.internal.cobalt.Lua;
 import dan200.computercraft.api.lua.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -22,9 +21,6 @@ import org.firedragon91245.cctresourceapi.entity.SoundInfo;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.*;
 import java.awt.image.BufferedImage;

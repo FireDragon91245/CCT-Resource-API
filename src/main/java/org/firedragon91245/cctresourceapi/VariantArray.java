@@ -26,6 +26,7 @@ public class VariantArray<A, B> {
         return variantArray;
     }
 
+    @SuppressWarnings("unchecked")
     public static <A, B> VariantArray<A, B> ofA(List<A> a)
     {
         VariantArray<A, B> variantArray = new VariantArray<>();
@@ -33,6 +34,7 @@ public class VariantArray<A, B> {
         return variantArray;
     }
 
+    @SuppressWarnings("unchecked")
     public static <A, B> VariantArray<A, B> ofB(List<B> b)
     {
         VariantArray<A, B> variantArray = new VariantArray<>();

@@ -1,5 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import javax.annotation.Nonnull;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import java.io.IOException;
@@ -48,7 +49,7 @@ public class PcmSigned16To8ResampleStream extends InputStream {
         this.bufferLimit = 0;
     }
 
-    private boolean fillBuffer() throws IOException {
+    private boolean invertedTryFillBuffer() throws IOException {
         int bytesRead = 0;
         int current_read;
 
@@ -58,13 +59,13 @@ public class PcmSigned16To8ResampleStream extends InputStream {
         }
 
         if (bytesRead == -1) {
-            return false;
+            return true;
         }
 
         if (bytesRead % frameSize != 0) {
             bytesRead -= bytesRead % frameSize;
             if (bytesRead <= 0) {
-                return false;
+                return true;
             }
         }
 
@@ -84,31 +85,7 @@ public class PcmSigned16To8ResampleStream extends InputStream {
                     break;
                 }
 
-                int low;
-                int high;
-
-                if (isBigEndian) {
-                    high = inputBuffer[sampleIndex] << 8;
-                    low = inputBuffer[sampleIndex + 1] & 0xFF;
-                } else {
-                    low = inputBuffer[sampleIndex] & 0xFF;
-                    high = inputBuffer[sampleIndex + 1] << 8;
-                }
-
-                short sample16 = (short) (high | low);
-                int eightBit = sample16 / 256;
-
-                if ((sample16 & 0xFF) > 0x80) {
-                    eightBit += 1;
-                }
-
-                if (eightBit > 127) {
-                    eightBit = 127;
-                } else if (eightBit < -128) {
-                    eightBit = -128;
-                }
-
-                byte sample8 = (byte) eightBit;
+                byte sample8 = getSample8(sampleIndex);
                 outputBuffer[outputIndex++] = sample8;
             }
         }
@@ -116,13 +93,39 @@ public class PcmSigned16To8ResampleStream extends InputStream {
         bufferPos = 0;
         bufferLimit = outputIndex;
 
-        return bufferLimit > 0;
+        return bufferLimit <= 0;
+    }
+
+    private byte getSample8(int sampleIndex) {
+        int low;
+        int high;
+
+        if (isBigEndian) {
+            high = inputBuffer[sampleIndex] << 8;
+            low = inputBuffer[sampleIndex + 1] & 0xFF;
+        } else {
+            low = inputBuffer[sampleIndex] & 0xFF;
+            high = inputBuffer[sampleIndex + 1] << 8;
+        }
+
+        short sample16 = (short) (high | low);
+        int eightBit = sample16 / 256;
+
+        if ((sample16 & 0xFF) > 0x80) {
+            eightBit += 1;
+        }
+
+        if (eightBit > 127) {
+            eightBit = 127;
+        }
+
+        return (byte) eightBit;
     }
 
     @Override
     public int read() throws IOException {
         if (bufferPos >= bufferLimit) {
-            if (!fillBuffer()) {
+            if (invertedTryFillBuffer()) {
                 return -1;
             }
         }
@@ -130,10 +133,7 @@ public class PcmSigned16To8ResampleStream extends InputStream {
     }
 
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
-        if (b == null) {
-            throw new NullPointerException("Target buffer is null");
-        }
+    public int read(@Nonnull byte[] b, int off, int len) throws IOException {
         if (off < 0 || len < 0 || len > b.length - off) {
             throw new IndexOutOfBoundsException("Invalid offset/length parameters");
         }
@@ -145,7 +145,7 @@ public class PcmSigned16To8ResampleStream extends InputStream {
 
         while (len > 0) {
             if (bufferPos >= bufferLimit) {
-                if (!fillBuffer()) {
+                if (invertedTryFillBuffer()) {
                     return bytesReadTotal == 0 ? -1 : bytesReadTotal;
                 }
             }
@@ -164,7 +164,7 @@ public class PcmSigned16To8ResampleStream extends InputStream {
     }
 
     @Override
-    public int read(byte[] b) throws IOException {
+    public int read(@Nonnull byte[] b) throws IOException {
         return read(b, 0, b.length);
     }
 

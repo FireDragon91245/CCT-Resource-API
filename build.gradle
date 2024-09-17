@@ -179,7 +179,11 @@ shadowJar {
 
     finalizedBy 'reobfShadowJar'
 
-    relocate '.*', 'org.firedragon91245.cctresourceapi.shadow'
+    relocate 'com.jcraft', 'org.firedragon91245.cctresourceapi.jcraft'
+    relocate 'javazoom', 'org.firedragon91245.cctresourceapi.javazoom'
+    relocate 'org.apache', 'org.firedragon91245.cctresourceapi.apache'
+    relocate 'org.slf4j', 'org.firedragon91245.cctresourceapi.slf4j'
+    relocate 'org.tritonus', 'org.firedragon91245.cctresourceapi.tritonus'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

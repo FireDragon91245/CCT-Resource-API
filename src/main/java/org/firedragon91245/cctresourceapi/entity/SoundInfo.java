@@ -2,7 +2,6 @@ package org.firedragon91245.cctresourceapi.entity;
 
 import org.firedragon91245.cctresourceapi.VariantArray;
 
-import java.util.AbstractMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;

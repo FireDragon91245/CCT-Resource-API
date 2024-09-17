@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class LuaByteStream extends AbstractCloseImpl {
+public class LuaByteStream {
     private InputStream baseInStream;
 
     public LuaByteStream(InputStream baseStream) {
@@ -66,7 +66,6 @@ public class LuaByteStream extends AbstractCloseImpl {
         closeImpl();
     }
 
-    @Override
     void closeImpl() throws LuaException {
         try {
             baseInStream.close();
