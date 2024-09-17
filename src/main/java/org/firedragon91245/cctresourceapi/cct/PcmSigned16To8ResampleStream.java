@@ -49,7 +49,14 @@ public class PcmSigned16To8ResampleStream extends InputStream {
     }
 
     private boolean fillBuffer() throws IOException {
-        int bytesRead = basePcm16Stream.read(inputBuffer);
+        int bytesRead = 0;
+        int current_read;
+
+        while (bytesRead < inputBuffer.length &&
+                (current_read = basePcm16Stream.read(inputBuffer, bytesRead, inputBuffer.length - bytesRead)) != -1) {
+            bytesRead += current_read;
+        }
+
         if (bytesRead == -1) {
             return false;
         }
