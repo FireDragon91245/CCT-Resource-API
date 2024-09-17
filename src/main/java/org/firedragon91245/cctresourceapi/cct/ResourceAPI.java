@@ -3,6 +3,7 @@ package org.firedragon91245.cctresourceapi.cct;
 import dan200.computercraft.api.lua.*;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.item.*;
 import net.minecraft.item.crafting.IRecipe;
 import net.minecraft.item.crafting.Ingredient;
@@ -11,15 +12,21 @@ import net.minecraft.nbt.INBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
 import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.firedragon91245.cctresourceapi.ColorUtil;
 import org.firedragon91245.cctresourceapi.Util;
+import org.firedragon91245.cctresourceapi.entity.SoundInfo;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -296,10 +303,10 @@ public class ResourceAPI implements ILuaAPI {
             String modid;
             String recipeid;
 
-            try{
+            try {
                 modid = (String) filterMap.getOrDefault("modid", ".*");
                 recipeid = (String) filterMap.getOrDefault("recipieid", ".*");
-            } catch (ClassCastException ignored){
+            } catch (ClassCastException ignored) {
                 throw new LuaException("Filter value is not a string! Bitch!");
             }
 
@@ -331,10 +338,10 @@ public class ResourceAPI implements ILuaAPI {
             String modid;
             String itemid;
 
-            try{
+            try {
                 modid = (String) filterMap.getOrDefault("modid", ".*");
                 itemid = (String) filterMap.getOrDefault("itemid", ".*");
-            } catch (ClassCastException ignored){
+            } catch (ClassCastException ignored) {
                 throw new LuaException("Filter value is not a string! Bitch!");
             }
 
@@ -373,12 +380,10 @@ public class ResourceAPI implements ILuaAPI {
         {
             ResourceLoading.loadItemModelInfo(item, itemInfo);
         }
-        if(flags.contains("g"))
-        {
+        if (flags.contains("g")) {
             itemAddGeneralInfo(itemInfo, item);
         }
-        if(flags.contains("e"))
-        {
+        if (flags.contains("e")) {
             AtomicInteger index = new AtomicInteger(1);
             itemInfo.put("enchantments", ForgeRegistries.ENCHANTMENTS.getValues().stream()
                     .filter(enchantment -> enchantment.canEnchant(new ItemStack(item)) || item.canApplyAtEnchantingTable(new ItemStack(item), enchantment))
@@ -397,13 +402,11 @@ public class ResourceAPI implements ILuaAPI {
         itemInfo.put("foodItem", item.isEdible());
         itemInfo.put("rarity", item.getRarity(new ItemStack(item)).toString());
 
-        if(item.isEdible())
-        {
+        if (item.isEdible()) {
             itemInfo.put("food", foodAsHashMap(Objects.requireNonNull(item.getFoodProperties())));
         }
-        
-        if(isToolItem(item))
-        {
+
+        if (isToolItem(item)) {
             itemInfo.put("tool", toolAsHashMap(item));
         }
 
@@ -411,23 +414,19 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> toolAsHashMap(Item item) {
         Map<String, Object> result = new HashMap<>();
-        if(item instanceof TieredItem)
-        {
+        if (item instanceof TieredItem) {
             TieredItem tieredItem = (TieredItem) item;
             result.put("tier", tieredItemAsHashMap(tieredItem));
         }
-        if(item instanceof ArmorItem)
-        {
+        if (item instanceof ArmorItem) {
             ArmorItem armorItem = (ArmorItem) item;
             result.put("armor", armorItemAsHashMap(armorItem));
         }
-        if(item instanceof ToolItem)
-        {
+        if (item instanceof ToolItem) {
             ToolItem toolItem = (ToolItem) item;
             result.put("tool", toolItemAsHashMap(toolItem));
         }
-        if(item instanceof BowItem)
-        {
+        if (item instanceof BowItem) {
             BowItem bowItem = (BowItem) item;
             result.put("bow", bowItemAsHashMap(bowItem));
         }
@@ -566,8 +565,7 @@ public class ResourceAPI implements ILuaAPI {
             Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
             Optional<IRecipe<?>> recipe = recipes.stream().filter(r -> r.getId().equals(recipeLocation)).findFirst();
 
-            if (recipe.isPresent())
-            {
+            if (recipe.isPresent()) {
                 return recipeAsMap(recipe.get());
             }
         } else if (filter instanceof Map) {
@@ -580,8 +578,7 @@ public class ResourceAPI implements ILuaAPI {
             Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
             Optional<IRecipe<?>> recipe = recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst();
 
-            if(recipe.isPresent())
-            {
+            if (recipe.isPresent()) {
                 return recipeAsMap(recipe.get());
             }
         }
@@ -591,8 +588,7 @@ public class ResourceAPI implements ILuaAPI {
     @SuppressWarnings({"unused", "unchecked"})
     @LuaFunction
     final public Map<Integer, Map<String, Object>> getRecipeInfos(Object filter) throws LuaException {
-        if(filter instanceof Map)
-        {
+        if (filter instanceof Map) {
             Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
             Predicate<IRecipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
@@ -607,9 +603,7 @@ public class ResourceAPI implements ILuaAPI {
                     .map(ResourceAPI::recipeAsMap)
                     .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
 
-        }
-        else
-        {
+        } else {
             throw new LuaException("Filter is not a table!");
         }
     }
@@ -692,10 +686,10 @@ public class ResourceAPI implements ILuaAPI {
 
             String modid;
             String itemid;
-            try{
+            try {
                 modid = (String) filterMap.getOrDefault("modid", ".*");
                 itemid = (String) filterMap.getOrDefault("itemid", ".*");
-            } catch (ClassCastException ignored){
+            } catch (ClassCastException ignored) {
                 throw new LuaException("Filter value is not a string!");
             }
 
@@ -725,7 +719,7 @@ public class ResourceAPI implements ILuaAPI {
             try {
                 modid = (String) filterMap.getOrDefault("modid", ".*");
                 blockid = (String) filterMap.getOrDefault("blockid", ".*");
-            } catch (ClassCastException ignored){
+            } catch (ClassCastException ignored) {
                 throw new LuaException("Filter value is not a string!");
             }
 
@@ -757,10 +751,10 @@ public class ResourceAPI implements ILuaAPI {
             String modid;
             String blockid;
 
-            try{
+            try {
                 modid = (String) filterMap.getOrDefault("modid", ".*");
                 blockid = (String) filterMap.getOrDefault("blockid", ".*");
-            } catch (ClassCastException ignored){
+            } catch (ClassCastException ignored) {
                 throw new LuaException("Filter value is not a string! Bitch!");
             }
 
@@ -784,6 +778,356 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return createBlockInfoTable(flags, block);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public String[] getEnchantmentIds(@Nullable Object filter) throws LuaException {
+        if (filter instanceof String) {
+            String filterString = (String) filter;
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty() && str.contains(filterString))
+                    .toArray(String[]::new);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String enchantmentid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                enchantmentid = (String) filterMap.getOrDefault("enchantmentid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern enchantmentidRegex = Pattern.compile(enchantmentid);
+
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, enchantmentidRegex))
+                    .toArray(String[]::new);
+        } else if (filter == null) {
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty())
+                    .toArray(String[]::new);
+        } else {
+            throw new LuaException("Filter is not a string, table or nil!");
+        }
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<String, Object> getEnchantmentInfo(Object filter, String flags) throws LuaException {
+        Enchantment enchantment;
+        if (filter instanceof String) {
+            String enchantmentId = (String) filter;
+            ResourceLocation enchantmentLocation = new ResourceLocation(enchantmentId);
+            enchantment = ForgeRegistries.ENCHANTMENTS.getValue(enchantmentLocation);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String enchantmentid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                enchantmentid = (String) filterMap.getOrDefault("enchantmentid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern enchantmentidRegex = Pattern.compile(enchantmentid);
+
+            String enchantmentId = ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .map(e -> Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, enchantmentidRegex))
+                    .findFirst().orElse(null);
+
+            if (enchantmentId == null)
+                return null;
+
+            ResourceLocation enchantmentLocation = new ResourceLocation(enchantmentId);
+            enchantment = ForgeRegistries.ENCHANTMENTS.getValue(enchantmentLocation);
+        } else {
+            throw new LuaException("Filter is not a string or table!");
+        }
+
+        return createEnchantmentInfoTable(enchantment, flags);
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Map<String, Object>> getEnchantmentInfos(Object filter, String flags) throws LuaException {
+        if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String enchantmentid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                enchantmentid = (String) filterMap.getOrDefault("enchantmentid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern enchantmentidRegex = Pattern.compile(enchantmentid);
+
+            AtomicInteger index = new AtomicInteger(1);
+            return ForgeRegistries.ENCHANTMENTS.getValues().stream()
+                    .filter(e -> ResourceFiltering.filterIds(Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, enchantmentidRegex))
+                    .map(e -> createEnchantmentInfoTable(e, flags))
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+        } else {
+            throw new LuaException("Filter is not a table!");
+        }
+    }
+
+    private Map<String, Object> createEnchantmentInfoTable(Enchantment enchantment, String flags) {
+        if (enchantment == null)
+            return null;
+
+        HashMap<String, Object> enchantmentInfo = new HashMap<>();
+        enchantmentInfo.put("enchantmentid", Objects.requireNonNull(enchantment.getRegistryName()).toString());
+        if (flags.contains("t")) {
+            enchantmentInfo.put("tags", enchantment.getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+        }
+        if (flags.contains("g")) {
+            enchantmentAddGeneralInfo(enchantmentInfo, enchantment);
+        }
+        return enchantmentInfo;
+    }
+
+    private void enchantmentAddGeneralInfo(HashMap<String, Object> enchantmentInfo, Enchantment enchantment) {
+        enchantmentInfo.put("maxLevel", enchantment.getMaxLevel());
+        enchantmentInfo.put("rarity", enchantment.getRarity().toString());
+        enchantmentInfo.put("curse", enchantment.isCurse());
+        enchantmentInfo.put("treasureOnly", enchantment.isTreasureOnly());
+        enchantmentInfo.put("tradeable", enchantment.isTradeable());
+        enchantmentInfo.put("discoverable", enchantment.isDiscoverable());
+        enchantmentInfo.put("minLevel", enchantment.getMinLevel());
+
+        AtomicInteger index = new AtomicInteger(1);
+        enchantmentInfo.put("items", ForgeRegistries.ITEMS.getValues().stream()
+                .filter(item -> item.canApplyAtEnchantingTable(new ItemStack(item), enchantment) || enchantment.canEnchant(new ItemStack(item)))
+                .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
+                .filter(str -> !str.isEmpty())
+                .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry)));
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public String[] getSoundIds(@Nullable Object filter) throws LuaException {
+        if (filter instanceof String) {
+            String containsFilter = (String) filter;
+            return ForgeRegistries.SOUND_EVENTS.getValues().stream()
+                    .map(soundEvent -> Util.defaultIfNull(soundEvent.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty() && str.contains(containsFilter))
+                    .toArray(String[]::new);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String soundid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                soundid = (String) filterMap.getOrDefault("soundid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern soundidRegex = Pattern.compile(soundid);
+
+            return ForgeRegistries.SOUND_EVENTS.getValues().stream()
+                    .map(soundEvent -> Util.defaultIfNull(soundEvent.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, soundidRegex))
+                    .toArray(String[]::new);
+        } else if (filter == null) {
+            return ForgeRegistries.SOUND_EVENTS.getValues().stream()
+                    .map(soundEvent -> Util.defaultIfNull(soundEvent.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> !str.isEmpty())
+                    .toArray(String[]::new);
+        } else {
+            throw new LuaException("Filter is not a string, table or nil!");
+        }
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<String, Object> getSoundInfo(Object filter, String flags) throws LuaException {
+        SoundEvent soundEvent;
+        if (filter instanceof String) {
+            String soundId = (String) filter;
+            ResourceLocation soundLocation = new ResourceLocation(soundId);
+            soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(soundLocation);
+        } else if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String soundid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                soundid = (String) filterMap.getOrDefault("soundid", ".*");
+            } catch (ClassCastException ignored) {
+                throw new LuaException("Filter value is not a string!");
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern soundidRegex = Pattern.compile(soundid);
+
+            String soundId = ForgeRegistries.SOUND_EVENTS.getValues().stream()
+                    .map(e -> Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString())
+                    .filter(str -> ResourceFiltering.filterIds(str, modidRegex, soundidRegex))
+                    .findFirst().orElse(null);
+
+            if (soundId == null)
+                return null;
+
+            ResourceLocation soundLocation = new ResourceLocation(soundId);
+            soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(soundLocation);
+        } else {
+            throw new LuaException("Filter is not a string or table!");
+        }
+
+        return createSoundInfoTable(soundEvent, flags);
+    }
+
+    private Map<String, Object> createSoundInfoTable(SoundEvent soundEvent, String flags) {
+        if (soundEvent == null)
+            return null;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("soundid", Objects.requireNonNull(soundEvent.getRegistryName()).toString());
+        SoundInfo info = null;
+        if (flags.contains("g")) {
+            info = ResourceLoading.getSoundInfo(soundEvent);
+            addSoundGeneralInfo(result, info);
+        }
+        if (flags.contains("d")) {
+            if (info == null)
+                info = ResourceLoading.getSoundInfo(soundEvent);
+            if (info == null)
+                return null;
+            result.put("data", info.soundNamesStream()
+                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, ResourceLoading.loadSoundData(soundName)))
+                    .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().asHashMap()))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
+        }
+        if(flags.contains("s")) // stream
+        {
+            if (info == null)
+                info = ResourceLoading.getSoundInfo(soundEvent);
+            if (info == null)
+                return null;
+            result.put("stream", info.soundNamesStream()
+                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, new LuaSoundStreamProvider(soundName)))
+                    .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
+        }
+
+        return result;
+    }
+
+    private void addSoundGeneralInfo(Map<String, Object> soundInfo, SoundInfo info) {
+        if (info == null)
+            return;
+        soundInfo.put("subtitle", info.getSubtitle());
+        soundInfo.put("sounds", info.soundsAsHashMap());
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Byte> soundBytesToSpeakerData(Object soundData) throws LuaException {
+        if (soundData instanceof Map) {
+            Map<Object, Object> soundDataMap = (Map<Object, Object>) soundData;
+            try {
+                int maxKey = 0;
+                for (Object keyObj : soundDataMap.keySet()) {
+                    if (keyObj instanceof Number) {
+                        int key = ((Number) keyObj).intValue();
+                        if (key > maxKey) {
+                            maxKey = key;
+                        }
+                    } else {
+                        throw new IllegalArgumentException("Map contains non-number keys.");
+                    }
+                }
+
+                // Step 4: Preallocate byte array
+                byte[] data = new byte[maxKey];
+
+                // Step 5: Populate the byte array
+                for (Map.Entry<Object, Object> entry : soundDataMap.entrySet()) {
+                    Object keyObj = entry.getKey();
+                    Object valueObj = entry.getValue();
+
+                    if (!(keyObj instanceof Number) || !(valueObj instanceof Number)) {
+                        throw new IllegalArgumentException("Map contains non-number key or value.");
+                    }
+
+                    int key = ((Number) keyObj).intValue();
+                    byte value = ((Number) valueObj).byteValue();
+
+                    if (key < 1 || key > maxKey) {
+                        throw new IllegalArgumentException("Key out of expected range: " + key);
+                    }
+
+                    data[key - 1] = value; // Lua tables are 1-based
+                }
+
+                ByteArrayOutputStream out = ResourceLoading.convertToSpeakerFormat(new ByteArrayInputStream(data));
+                byte[] result = out.toByteArray();
+                out.close();
+
+                Map<Integer, Byte> resultMap = new HashMap<>();
+                for (int i = 0; i < result.length; i++) {
+                    resultMap.put(i + 1, result[i]);
+                }
+                return resultMap;
+            } catch (RuntimeException | UnsupportedAudioFileException | IOException e) {
+                throw new LuaException("Invalid sound data");
+            }
+
+        }
+        throw new LuaException("Invalid sound data");
+    }
+
+    @SuppressWarnings({"unused", "unchecked"})
+    @LuaFunction
+    final public Map<Integer, Map<String, Object>> getSoundInfos(Object filter, String flags)
+    {
+        if (filter instanceof Map) {
+            Map<Object, Object> filterMap = (Map<Object, Object>) filter;
+
+            String modid;
+            String soundid;
+
+            try {
+                modid = (String) filterMap.getOrDefault("modid", ".*");
+                soundid = (String) filterMap.getOrDefault("soundid", ".*");
+            } catch (ClassCastException ignored) {
+                return null;
+            }
+
+            Pattern modidRegex = Pattern.compile(modid);
+            Pattern soundidRegex = Pattern.compile(soundid);
+
+            AtomicInteger index = new AtomicInteger(1);
+            return ForgeRegistries.SOUND_EVENTS.getValues().stream()
+                    .filter(e -> ResourceFiltering.filterIds(Util.defaultIfNull(e.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, soundidRegex))
+                    .map(e -> createSoundInfoTable(e, flags))
+                    .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
+        } else {
+            return null;
+        }
     }
 
     @Override
