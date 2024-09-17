@@ -32,7 +32,7 @@ public class ResourceFiltering {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Predicate<Recipe<?>> assembleRecipeIngredientFilter(Map<String, Object> filterMap) {
+    protected static Predicate<Recipe<?>> assembleRecipeIngredientFilter(Map<Object, Object> filterMap) {
         if(!filterMap.containsKey("ingredients"))
             return recipe -> true;
 
@@ -439,7 +439,7 @@ public class ResourceFiltering {
     }
 
     @SuppressWarnings("unchecked")
-    protected static Predicate<Recipe<?>> assembleRecipeResultFilter(Map<String, Object> filterMap) {
+    protected static Predicate<Recipe<?>> assembleRecipeResultFilter(Map<Object, Object> filterMap) {
         if(!filterMap.containsKey("result"))
             return recipe -> true;
 
@@ -456,7 +456,7 @@ public class ResourceFiltering {
         return recipe -> true;
     }
 
-    protected static Predicate<Recipe<?>> assembleRecipeSimpleFilter(Map<String, Object> filterMap) {
+    protected static Predicate<Recipe<?>> assembleRecipeSimpleFilter(Map<Object, Object> filterMap) {
         String recipeType = (String) filterMap.getOrDefault("type", ".*");
         String recipeGroup = (String) filterMap.getOrDefault("group", ".*");
         String modid = (String) filterMap.getOrDefault("modid", ".*");

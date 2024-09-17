@@ -290,7 +290,7 @@ public class ResourceLoading {
         return Optional.empty();
     }
 
-    protected static void loadBlockModelInfo(Block b, HashMap<String, Object> blockInfo) {
+    protected static void loadBlockModelInfo(Block b, Map<String, Object> blockInfo) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(b);
         if (blockId == null)
             return;
@@ -313,7 +313,7 @@ public class ResourceLoading {
     @SuppressWarnings("unchecked")
     static <TReturn> TReturn loadBufferedImageFromTextureObject(Object image, Map<Object, Color> colorMap, BiFunction<BufferedImage, Map<Object, Color>, TReturn> consumer) throws LuaException {
         if (image instanceof Map) {
-            Map<String, Object> imageMap = (Map<String, Object>) image;
+            Map<Object, Object> imageMap = (Map<Object, Object>) image;
             if (!imageMap.containsKey("imageBytes") || !imageMap.containsKey("formatName"))
                 return null;
 
