@@ -2,6 +2,7 @@ package org.firedragon91245.cctresourceapi;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.mojang.math.Vector3f;
 import dan200.computercraft.api.ComputerCraftAPI;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
@@ -13,7 +14,6 @@ import org.firedragon91245.cctresourceapi.json.BlockStateModelSerializer;
 import org.firedragon91245.cctresourceapi.json.BlockStateModelVariantSerializer;
 import org.firedragon91245.cctresourceapi.json.OneOrMoreSerializer;
 import org.firedragon91245.cctresourceapi.json.Vector3fSerializer;
-import org.joml.Vector3f;
 
 @Mod("cct_resource_api")
 public class CCT_Resource_API {

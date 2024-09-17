@@ -190,7 +190,7 @@ public class ResourceAPI implements ILuaAPI {
 
     public static HashMap<String, Object> itemStackAsHashMap(ItemStack item) {
         HashMap<String, Object> itemStackInfo = new HashMap<>();
-        itemStackInfo.put("item", Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(item.getItem())).toString());
+        itemStackInfo.put("item", Objects.requireNonNull(item.getItem().getRegistryName()).toString());
         itemStackInfo.put("count", item.getCount());
         itemStackInfo.put("nbt", convertNBTtoMap(item.getTag()));
         return itemStackInfo;
@@ -348,7 +348,7 @@ public class ResourceAPI implements ILuaAPI {
             Pattern itemidRegex = Pattern.compile(itemid);
 
             String itemId = ForgeRegistries.ITEMS.getValues().stream()
-                    .map(it -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(it), new ResourceLocation("")).toString())
+                    .map(it -> Util.defaultIfNull(it.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
                     .findFirst().orElse(null);
 
@@ -370,9 +370,8 @@ public class ResourceAPI implements ILuaAPI {
             return null;
 
         HashMap<String, Object> itemInfo = new HashMap<>();
-
-        itemInfo.put("itemid", Objects.requireNonNull(ForgeRegistries.ITEMS.getKey(item)).toString());
-        if(tag.contains("t")) // t = tags
+        itemInfo.put("itemid", Objects.requireNonNull(item.getRegistryName()).toString());
+        if (flags.contains("t")) // t = tags
         {
             ITagManager<Item> tags = ForgeRegistries.ITEMS.tags();
             if(tags == null)
@@ -559,15 +558,6 @@ public class ResourceAPI implements ILuaAPI {
         return ResourceLoading.loadBufferedImageFromTextureObject(image, COMPUTECRAFT_PALETTE_BLIT, ResourceAPI::convertBufferedImageToCCString);
     }
 
-    private static void addRecipeToMap(Map<String, Object> recipeMap, Recipe<?> recipe)
-    {
-        recipeMap.put("recipeid", recipe.getId().toString());
-        recipeMap.put("type", recipe.getType().toString());
-        recipeMap.put("group", recipe.getGroup());
-        recipeMap.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
-        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem(ServerLifecycleHooks.getCurrentServer().registryAccess())));
-    }
-
     @SuppressWarnings({"unchecked", "unused"})
     @LuaFunction
     final public Map<String, Object> getRecipeInfo(Object filter) {
@@ -662,7 +652,7 @@ public class ResourceAPI implements ILuaAPI {
     final public String[] getBlockIds(@Nullable Object filter) throws LuaException {
         if (filter instanceof String) {
             return ForgeRegistries.BLOCKS.getValues().stream()
-                    .map(block -> Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(block), new ResourceLocation("")).toString())
+                    .map(block -> Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty() && str.contains((String) filter))
                     .toArray(String[]::new);
         } else if (filter instanceof Map) {
@@ -681,7 +671,7 @@ public class ResourceAPI implements ILuaAPI {
             Pattern itemidRegex = Pattern.compile(blockid);
 
             return ForgeRegistries.BLOCKS.getValues().stream()
-                    .map(block -> Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(block), new ResourceLocation("")).toString())
+                    .map(block -> Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
                     .toArray(String[]::new);
 
@@ -693,11 +683,6 @@ public class ResourceAPI implements ILuaAPI {
         } else {
             throw new LuaException("Filter is not nil, string or table!");
         }
-
-        return ForgeRegistries.BLOCKS.getValues().stream()
-                .map(block -> Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(block), new ResourceLocation("")).toString())
-                .filter(str -> !str.isEmpty())
-                .toArray(String[]::new);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -705,7 +690,7 @@ public class ResourceAPI implements ILuaAPI {
     final public String[] getItemIds(@Nullable Object filter) throws LuaException {
         if (filter instanceof String) {
             return ForgeRegistries.ITEMS.getValues().stream()
-                    .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")).toString())
+                    .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty() && str.contains((String) filter))
                     .toArray(String[]::new);
         } else if (filter instanceof Map) {
@@ -724,13 +709,13 @@ public class ResourceAPI implements ILuaAPI {
             Pattern itemidRegex = Pattern.compile(itemid);
 
             return ForgeRegistries.ITEMS.getValues().stream()
-                    .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")).toString())
+                    .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> ResourceFiltering.filterIds(str, modidRegex, itemidRegex))
                     .toArray(String[]::new);
 
         }
         return ForgeRegistries.ITEMS.getValues().stream()
-                .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")).toString())
+                .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                 .filter(str -> !str.isEmpty())
                 .toArray(String[]::new);
     }

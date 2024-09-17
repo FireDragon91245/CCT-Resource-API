@@ -61,9 +61,6 @@ minecraft {
     runs {
         // applies to all the run configs below
         configureEach {
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
-
             workingDirectory project.file('run')
 
             // Recommended logging data for a userdev environment
@@ -126,10 +123,9 @@ repositories {
     //     dir 'libs'
     // }
 
-    repositories {
-        maven {
-            url "https://maven.squiddev.cc"
-        }
+    maven {
+        name = 'cc-tweaked'
+        url = 'https://maven.squiddev.cc/'
     }
 }
 
@@ -141,9 +137,7 @@ dependencies {
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-    compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cc_tweaked_version}")
-    compileOnly(fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cc_tweaked_version}"))
-    runtimeOnly(fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}"))
+    implementation fg.deobf("org.squiddev:cc-tweaked-${cc_tweaked_version}")
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime

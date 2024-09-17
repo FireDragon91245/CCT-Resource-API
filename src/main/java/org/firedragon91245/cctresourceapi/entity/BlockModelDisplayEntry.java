@@ -1,6 +1,6 @@
 package org.firedragon91245.cctresourceapi.entity;
 
-import org.joml.Vector3f;
+import com.mojang.math.Vector3f;
 
 import java.util.Arrays;
 import java.util.HashMap;

@@ -7,7 +7,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.forgespi.language.IModFileInfo;
 import net.minecraftforge.forgespi.locating.IModFile;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 import org.firedragon91245.cctresourceapi.entity.*;
 
@@ -291,7 +290,7 @@ public class ResourceLoading {
     }
 
     protected static void loadBlockModelInfo(Block b, Map<String, Object> blockInfo) {
-        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(b);
+        ResourceLocation blockId = b.getRegistryName();
         if (blockId == null)
             return;
 
@@ -343,7 +342,7 @@ public class ResourceLoading {
     }
 
     public static void loadItemModelInfo(Item item, HashMap<String, Object> itemInfo) {
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation itemId = item.getRegistryName();
         if (itemId == null)
             return;
 
