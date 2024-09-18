@@ -1,20 +1,22 @@
 package org.firedragon91245.cctresourceapi.cct;
 
 import dan200.computercraft.api.lua.*;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-import net.minecraft.enchantment.Enchantment;
-import net.minecraft.item.*;
-import net.minecraft.item.crafting.IRecipe;
-import net.minecraft.item.crafting.Ingredient;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.INBT;
-import net.minecraft.nbt.ListNBT;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.tags.ITag;
+import net.minecraftforge.registries.tags.ITagManager;
+import net.minecraftforge.server.ServerLifecycleHooks;
 import org.firedragon91245.cctresourceapi.ColorUtil;
 import org.firedragon91245.cctresourceapi.Util;
 import org.firedragon91245.cctresourceapi.entity.SoundInfo;
@@ -38,7 +40,7 @@ import java.util.stream.Stream;
 
 public class ResourceAPI implements ILuaAPI {
 
-    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<Object, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_BLIT = new HashMap<>() {{
         put(0, new Color(240, 240, 240));   // 1: white
         put(1, new Color(242, 178, 51));    // 2: orange
         put(2, new Color(229, 127, 216));   // 4: magenta
@@ -57,7 +59,7 @@ public class ResourceAPI implements ILuaAPI {
         put('f', new Color(17, 17, 17));       // 32768: black
     }};
 
-    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<Object, Color>() {{
+    private static final Map<Object, Color> COMPUTECRAFT_PALETTE_DEC = new HashMap<>() {{
         put(1, new Color(240, 240, 240));   // 1: white
         put(2, new Color(242, 178, 51));    // 2: orange
         put(4, new Color(229, 127, 216));   // 4: magenta
@@ -99,20 +101,20 @@ public class ResourceAPI implements ILuaAPI {
         return ingredientsInfo;
     }
 
-    private static Map<String, Object> convertNBTtoMap(@Nullable CompoundNBT compoundNBT) {
+    private static Map<String, Object> convertNBTtoMap(@Nullable CompoundTag compoundNBT) {
         if (compoundNBT == null)
             return null;
         Map<String, Object> map = new HashMap<>();
 
         for (String key : compoundNBT.getAllKeys()) {
-            INBT value = compoundNBT.get(key);
+            Tag value = compoundNBT.get(key);
             if (value == null)
                 continue;
 
-            if (value instanceof CompoundNBT) {
-                map.put(key, convertNBTtoMap((CompoundNBT) value));
-            } else if (value instanceof ListNBT) {
-                map.put(key, convertListNBTtoList((ListNBT) value));
+            if (value instanceof CompoundTag) {
+                map.put(key, convertNBTtoMap((CompoundTag) value));
+            } else if (value instanceof ListTag) {
+                map.put(key, convertListNBTtoList((ListTag) value));
             } else {
                 map.put(key, value.getAsString());
             }
@@ -121,14 +123,14 @@ public class ResourceAPI implements ILuaAPI {
         return map;
     }
 
-    private static List<Object> convertListNBTtoList(ListNBT listNBT) {
+    private static List<Object> convertListNBTtoList(ListTag listNBT) {
         List<Object> list = new ArrayList<>();
 
-        for (INBT element : listNBT) {
-            if (element instanceof CompoundNBT) {
-                list.add(convertNBTtoMap((CompoundNBT) element));
-            } else if (element instanceof ListNBT) {
-                list.add(convertListNBTtoList((ListNBT) element));
+        for (Tag element : listNBT) {
+            if (element instanceof CompoundTag) {
+                list.add(convertNBTtoMap((CompoundTag) element));
+            } else if (element instanceof ListTag) {
+                list.add(convertListNBTtoList((ListTag) element));
             } else {
                 list.add(element.getAsString());
             }
@@ -263,7 +265,7 @@ public class ResourceAPI implements ILuaAPI {
         return pixels;
     }
 
-    private static Map<String, Object> recipeAsMap(IRecipe<?> recipe) {
+    private static Map<String, Object> recipeAsMap(Recipe<?> recipe) {
         Map<String, Object> recipeMap = new HashMap<>();
         recipeMap.put("recipeid", recipe.getId().toString());
         recipeMap.put("type", recipe.getType().toString());
@@ -280,7 +282,10 @@ public class ResourceAPI implements ILuaAPI {
         Map<String, Object> blockInfo = new HashMap<>();
         blockInfo.put("blockid", Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString());
         if (flags.contains("t")) { // t = tags
-            blockInfo.put("tags", Objects.requireNonNull(block).getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+            ITagManager<Block> tags = ForgeRegistries.BLOCKS.tags();
+            if(tags == null)
+                return null;
+            blockInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(block)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
         if (flags.contains("m")) { // m = moodels + textures
             ResourceLoading.loadBlockModelInfo(Objects.requireNonNull(block), blockInfo);
@@ -326,8 +331,7 @@ public class ResourceAPI implements ILuaAPI {
     @LuaFunction
     final public Map<String, Object> getItemInfo(Object filter, String flags) throws LuaException {
         Item item = null;
-        if (filter instanceof String) {
-            String itemId = (String) filter;
+        if (filter instanceof String itemId) {
             ResourceLocation itemLocation = new ResourceLocation(itemId);
             if (!ForgeRegistries.ITEMS.containsKey(itemLocation))
                 return null;
@@ -374,7 +378,10 @@ public class ResourceAPI implements ILuaAPI {
         itemInfo.put("itemid", Objects.requireNonNull(item.getRegistryName()).toString());
         if (flags.contains("t")) // t = tags
         {
-            itemInfo.put("tags", item.getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+            ITagManager<Item> tags = ForgeRegistries.ITEMS.tags();
+            if(tags == null)
+                return null;
+            itemInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(item)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
         if (flags.contains("m")) // m = models + textures
         {
@@ -402,8 +409,9 @@ public class ResourceAPI implements ILuaAPI {
         itemInfo.put("foodItem", item.isEdible());
         itemInfo.put("rarity", item.getRarity(new ItemStack(item)).toString());
 
-        if (item.isEdible()) {
-            itemInfo.put("food", foodAsHashMap(Objects.requireNonNull(item.getFoodProperties())));
+        if(item.isEdible())
+        {
+            itemInfo.put("food", foodAsHashMap(item.getFoodProperties(new ItemStack(item), null)));
         }
 
         if (isToolItem(item)) {
@@ -414,20 +422,20 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> toolAsHashMap(Item item) {
         Map<String, Object> result = new HashMap<>();
-        if (item instanceof TieredItem) {
-            TieredItem tieredItem = (TieredItem) item;
+        if(item instanceof TieredItem tieredItem)
+        {
             result.put("tier", tieredItemAsHashMap(tieredItem));
         }
-        if (item instanceof ArmorItem) {
-            ArmorItem armorItem = (ArmorItem) item;
+        if(item instanceof ArmorItem armorItem)
+        {
             result.put("armor", armorItemAsHashMap(armorItem));
         }
-        if (item instanceof ToolItem) {
-            ToolItem toolItem = (ToolItem) item;
-            result.put("tool", toolItemAsHashMap(toolItem));
+        if(item instanceof DiggerItem diggerItem)
+        {
+            result.put("tool", toolItemAsHashMap(diggerItem));
         }
-        if (item instanceof BowItem) {
-            BowItem bowItem = (BowItem) item;
+        if(item instanceof BowItem bowItem)
+        {
             result.put("bow", bowItemAsHashMap(bowItem));
         }
 
@@ -440,7 +448,7 @@ public class ResourceAPI implements ILuaAPI {
         return result;
     }
 
-    private Map<String, Object> toolItemAsHashMap(ToolItem toolItem) {
+    private Map<String, Object> toolItemAsHashMap(DiggerItem toolItem) {
         Map<String, Object> result = new HashMap<>();
         result.put("attackDamage", toolItem.getAttackDamage());
         result.put("breakSpeed", toolItem.getDestroySpeed(new ItemStack(toolItem), Blocks.STONE.defaultBlockState()));
@@ -456,7 +464,7 @@ public class ResourceAPI implements ILuaAPI {
         return result;
     }
 
-    private Map<String, Object> armorMaterialAsHashMap(IArmorMaterial material) {
+    private Map<String, Object> armorMaterialAsHashMap(ArmorMaterial material) {
         Map<String, Object> result = new HashMap<>();
         result.put("name", material.getName());
         result.put("repairMaterial", ingredientAsHashMap(material.getRepairIngredient()));
@@ -467,8 +475,7 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> tieredItemAsHashMap(TieredItem tieredItem) {
         Map<String, Object> result = new HashMap<>();
-        IItemTier tier = tieredItem.getTier();
-        result.put("level", tier.getLevel());
+        Tier tier = tieredItem.getTier();
         result.put("maxUses", tier.getUses());
         result.put("speed", tier.getSpeed());
         result.put("damageBonus", tier.getAttackDamageBonus());
@@ -481,8 +488,10 @@ public class ResourceAPI implements ILuaAPI {
         return item instanceof ArmorItem || item instanceof ShieldItem || item instanceof BowItem || item instanceof CrossbowItem || item instanceof TieredItem || item instanceof SwordItem || item instanceof PickaxeItem || item instanceof AxeItem || item instanceof ShovelItem || item instanceof HoeItem;
     }
 
-    private Map<String, Object> foodAsHashMap(Food food) {
+    private Map<String, Object> foodAsHashMap(@Nullable FoodProperties food) {
         Map<String, Object> result = new HashMap<>();
+        if(food == null)
+            return result;
         result.put("nutrition", food.getNutrition());
         result.put("saturation", food.getSaturationModifier());
         result.put("meat", food.isMeat());
@@ -559,11 +568,11 @@ public class ResourceAPI implements ILuaAPI {
 
         HashMap<String, Object> recipeInfo = new HashMap<>();
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (filter instanceof String) {
-            String recipeId = (String) filter;
+        if (filter instanceof String recipeId) {
             ResourceLocation recipeLocation = new ResourceLocation(recipeId);
-            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
-            Optional<IRecipe<?>> recipe = recipes.stream().filter(r -> r.getId().equals(recipeLocation)).findFirst();
+
+            Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
+            Optional<Recipe<?>> recipe = recipes.stream().filter(r -> r.getId().equals(recipeLocation)).findFirst();
 
             if (recipe.isPresent()) {
                 return recipeAsMap(recipe.get());
@@ -571,12 +580,12 @@ public class ResourceAPI implements ILuaAPI {
         } else if (filter instanceof Map) {
             Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
-            Predicate<IRecipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
-            Predicate<IRecipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
-            Predicate<IRecipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
+            Predicate<Recipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
+            Predicate<Recipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
+            Predicate<Recipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
 
-            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
-            Optional<IRecipe<?>> recipe = recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst();
+            Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
+            Optional<Recipe<?>> recipe = recipes.stream().filter(simpleFilter.and(resultFilter).and(ingredientFilter)).findFirst();
 
             if (recipe.isPresent()) {
                 return recipeAsMap(recipe.get());
@@ -591,12 +600,12 @@ public class ResourceAPI implements ILuaAPI {
         if (filter instanceof Map) {
             Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
-            Predicate<IRecipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
-            Predicate<IRecipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
-            Predicate<IRecipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
+            Predicate<Recipe<?>> simpleFilter = ResourceFiltering.assembleRecipeSimpleFilter(filterMap);
+            Predicate<Recipe<?>> resultFilter = ResourceFiltering.assembleRecipeResultFilter(filterMap);
+            Predicate<Recipe<?>> ingredientFilter = ResourceFiltering.assembleRecipeIngredientFilter(filterMap);
 
             MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-            Collection<IRecipe<?>> recipes = server.getRecipeManager().getRecipes();
+            Collection<Recipe<?>> recipes = server.getRecipeManager().getRecipes();
             AtomicInteger index = new AtomicInteger(1);
             return recipes.stream()
                     .filter(simpleFilter.and(resultFilter).and(ingredientFilter))
@@ -740,8 +749,7 @@ public class ResourceAPI implements ILuaAPI {
     @LuaFunction
     final public Map<String, Object> getBlockInfo(Object filter, String flags) throws LuaException {
         Block block;
-        if (filter instanceof String) {
-            String blockid = (String) filter;
+        if (filter instanceof String blockid) {
             ResourceLocation blockLocation = new ResourceLocation(blockid);
 
             block = ForgeRegistries.BLOCKS.getValue(blockLocation);
