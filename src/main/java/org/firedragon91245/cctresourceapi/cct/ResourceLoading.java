@@ -555,7 +555,7 @@ public class ResourceLoading {
     private static AudioInputStream loadFileSoundStream(URLClassLoader loader, String s) {
         try {
             InputStream soundStream = loader.getResourceAsStream(s);
-            return AudioSystem.getAudioInputStream(soundStream);
+            return AudioSystem.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
             CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
         }
@@ -629,7 +629,7 @@ public class ResourceLoading {
     private static AudioInputStream loadFileBundledSoundStream(String s) {
         try {
             InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s);
-            return AudioSystem.getAudioInputStream(soundStream);
+            return AudioSystem.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
             CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
         }

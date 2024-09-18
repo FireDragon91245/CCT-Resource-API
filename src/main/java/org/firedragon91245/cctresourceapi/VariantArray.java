@@ -1,6 +1,9 @@
 package org.firedragon91245.cctresourceapi;
 
+import com.google.gson.reflect.TypeToken;
+
 import javax.annotation.Nullable;
+import java.lang.reflect.Array;
 import java.util.List;
 
 public class VariantArray<A, B> {
@@ -27,18 +30,18 @@ public class VariantArray<A, B> {
     }
 
     @SuppressWarnings("unchecked")
-    public static <A, B> VariantArray<A, B> ofA(List<A> a)
+    public static <A, B> VariantArray<A, B> ofA(List<?> a, Class<?> aClass)
     {
         VariantArray<A, B> variantArray = new VariantArray<>();
-        variantArray.a = (A[]) a.toArray();
+        variantArray.a = a.toArray((A[]) Array.newInstance(aClass, a.size()));
         return variantArray;
     }
 
     @SuppressWarnings("unchecked")
-    public static <A, B> VariantArray<A, B> ofB(List<B> b)
+    public static <A, B> VariantArray<A, B> ofB(List<?> b, Class<?> bClass)
     {
         VariantArray<A, B> variantArray = new VariantArray<>();
-        variantArray.b = (B[]) b.toArray();
+        variantArray.b = b.toArray((B[]) Array.newInstance(bClass, b.size()));
         return variantArray;
     }
 

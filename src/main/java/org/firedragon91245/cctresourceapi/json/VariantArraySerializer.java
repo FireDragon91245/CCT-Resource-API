@@ -7,7 +7,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
 
-public class VariantArraySerializer implements JsonSerializer<VariantArray<?,?>>, JsonDeserializer<VariantArray<?,?>> {
+public class VariantArraySerializer implements JsonSerializer<VariantArray<?,?>>, JsonDeserializer<VariantArray> {
     @Override
     public VariantArray<?,?> deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
         if(!jsonElement.isJsonArray())
@@ -39,7 +39,14 @@ public class VariantArraySerializer implements JsonSerializer<VariantArray<?,?>>
                         return null;
                     }
                 });
-                return VariantArray.ofA(result);
+                if(typeArguments[0] instanceof Class<?> aClass)
+                {
+                    return VariantArray.ofA(result, aClass);
+                }
+                else
+                {
+                    throw new JsonParseException("Type argument A must be a class");
+                }
             } catch (JsonParseException e) {
                 List<?> result = jsonDeserializationContext.deserialize(jsonArray, new ParameterizedType() {
                     @Override
@@ -57,7 +64,14 @@ public class VariantArraySerializer implements JsonSerializer<VariantArray<?,?>>
                         return null;
                     }
                 });
-                return VariantArray.ofB(result);
+                if(typeArguments[1] instanceof Class<?> bClass)
+                {
+                    return VariantArray.ofB(result, bClass);
+                }
+                else
+                {
+                    throw new JsonParseException("Type argument B must be a class");
+                }
             }
         }
         else {
