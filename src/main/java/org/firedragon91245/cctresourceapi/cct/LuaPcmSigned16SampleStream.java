@@ -4,6 +4,7 @@ import dan200.computercraft.api.lua.LuaException;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
+import java.io.IOException;
 
 public class LuaPcmSigned16SampleStream extends LuaByteStream {
 
@@ -45,6 +46,18 @@ public class LuaPcmSigned16SampleStream extends LuaByteStream {
 
     protected AudioInputStream getBaseAudioStream() {
         return useConversionStream ? convertedAudioStream : baseAudioStream;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if(!closed)
+        {
+            if (useConversionStream && convertedAudioStream != null) {
+                convertedAudioStream.close();
+            }
+            baseAudioStream.close();
+            closed = true;
+        }
     }
 
     @Override

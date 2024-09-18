@@ -4,13 +4,15 @@ import dan200.computercraft.api.lua.LuaException;
 import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.lua.MethodResult;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-public class LuaByteStream {
+public class LuaByteStream implements Closeable {
     private InputStream baseInStream;
+    protected boolean closed = false;
 
     public LuaByteStream(InputStream baseStream) {
         this.baseInStream = baseStream;
@@ -61,9 +63,20 @@ public class LuaByteStream {
         }
     }
 
+    @Override
+    public void close() throws IOException {
+        if(!closed) {
+            baseInStream.close();
+            closed = true;
+        }
+    }
+
     @LuaFunction
-    final public void close() throws LuaException {
-        closeImpl();
+    final public void close(Object ignored) throws LuaException {
+        if(!closed) {
+            closeImpl();
+            closed = true;
+        }
     }
 
     void closeImpl() throws LuaException {
