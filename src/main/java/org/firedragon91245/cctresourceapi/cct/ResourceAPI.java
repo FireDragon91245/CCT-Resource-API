@@ -26,6 +26,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.*;
@@ -75,6 +76,12 @@ public class ResourceAPI implements ILuaAPI {
         put(16384, new Color(204, 76, 76));     // 16384: red
         put(32768, new Color(17, 17, 17));       // 32768: black
     }};
+
+    private final List<Closeable> toClose = new LinkedList<>();
+
+    public void addStreamToClose(Closeable stream) {
+        toClose.add(stream);
+    }
 
     private static HashMap<String, Object> ingredientAsHashMap(Ingredient ingredient) {
         HashMap<String, Object> ingredientInfo = new HashMap<>();
@@ -1029,7 +1036,7 @@ public class ResourceAPI implements ILuaAPI {
             if (info == null)
                 return null;
             result.put("stream", info.soundNamesStream()
-                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, new LuaSoundStreamProvider(soundName)))
+                    .map(soundName -> new AbstractMap.SimpleEntry<>(soundName, new LuaSoundStreamProvider(soundName, this)))
                     .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
         }
 
@@ -1149,7 +1156,13 @@ public class ResourceAPI implements ILuaAPI {
 
     @Override
     public void shutdown() {
-        ILuaAPI.super.shutdown();
+        for(Closeable closeable : toClose)
+        {
+            try {
+                closeable.close();
+            } catch (IOException ignored) {
+            }
+        }
     }
 
     public static class Factory implements ILuaAPIFactory {
