@@ -15,9 +15,8 @@ public class VariantArraySerializer implements JsonSerializer<VariantArray<?,?>>
             throw new JsonParseException("VariantArray must be an array");
         }
         JsonArray jsonArray = jsonElement.getAsJsonArray();
-        if(type instanceof ParameterizedType)
+        if(type instanceof ParameterizedType parameterizedType)
         {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
             Type[] typeArguments = parameterizedType.getActualTypeArguments();
             if(typeArguments.length != 2)
             {

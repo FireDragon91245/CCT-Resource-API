@@ -6,11 +6,13 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -791,8 +793,7 @@ public class ResourceAPI implements ILuaAPI {
     @SuppressWarnings({"unused", "unchecked"})
     @LuaFunction
     final public String[] getEnchantmentIds(@Nullable Object filter) throws LuaException {
-        if (filter instanceof String) {
-            String filterString = (String) filter;
+        if (filter instanceof String filterString) {
             return ForgeRegistries.ENCHANTMENTS.getValues().stream()
                     .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty() && str.contains(filterString))
@@ -831,8 +832,7 @@ public class ResourceAPI implements ILuaAPI {
     @LuaFunction
     final public Map<String, Object> getEnchantmentInfo(Object filter, String flags) throws LuaException {
         Enchantment enchantment;
-        if (filter instanceof String) {
-            String enchantmentId = (String) filter;
+        if (filter instanceof String enchantmentId) {
             ResourceLocation enchantmentLocation = new ResourceLocation(enchantmentId);
             enchantment = ForgeRegistries.ENCHANTMENTS.getValue(enchantmentLocation);
         } else if (filter instanceof Map) {
@@ -904,7 +904,10 @@ public class ResourceAPI implements ILuaAPI {
         HashMap<String, Object> enchantmentInfo = new HashMap<>();
         enchantmentInfo.put("enchantmentid", Objects.requireNonNull(enchantment.getRegistryName()).toString());
         if (flags.contains("t")) {
-            enchantmentInfo.put("tags", enchantment.getTags().stream().map(ResourceLocation::toString).toArray(String[]::new));
+            ITagManager<Enchantment> tags = ForgeRegistries.ENCHANTMENTS.tags();
+            if(tags == null)
+                return null;
+            enchantmentInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(enchantment)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
         if (flags.contains("g")) {
             enchantmentAddGeneralInfo(enchantmentInfo, enchantment);
@@ -932,8 +935,7 @@ public class ResourceAPI implements ILuaAPI {
     @SuppressWarnings({"unused", "unchecked"})
     @LuaFunction
     final public String[] getSoundIds(@Nullable Object filter) throws LuaException {
-        if (filter instanceof String) {
-            String containsFilter = (String) filter;
+        if (filter instanceof String containsFilter) {
             return ForgeRegistries.SOUND_EVENTS.getValues().stream()
                     .map(soundEvent -> Util.defaultIfNull(soundEvent.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty() && str.contains(containsFilter))
@@ -972,8 +974,7 @@ public class ResourceAPI implements ILuaAPI {
     @LuaFunction
     final public Map<String, Object> getSoundInfo(Object filter, String flags) throws LuaException {
         SoundEvent soundEvent;
-        if (filter instanceof String) {
-            String soundId = (String) filter;
+        if (filter instanceof String soundId) {
             ResourceLocation soundLocation = new ResourceLocation(soundId);
             soundEvent = ForgeRegistries.SOUND_EVENTS.getValue(soundLocation);
         } else if (filter instanceof Map) {
