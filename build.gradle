@@ -3,6 +3,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 
@@ -61,9 +62,6 @@ minecraft {
     runs {
         // applies to all the run configs below
         configureEach {
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
-
             workingDirectory project.file('run')
 
             // Recommended logging data for a userdev environment
@@ -125,12 +123,17 @@ repositories {
     // flatDir {
     //     dir 'libs'
     // }
+    mavenCentral()
 
-    repositories {
-        maven {
-            url "https://maven.squiddev.cc"
-        }
+    maven {
+        name = 'cc-tweaked'
+        url = 'https://maven.squiddev.cc/'
     }
+}
+
+configurations {
+    shade
+    minecraftLibrary.extendsFrom shade
 }
 
 dependencies {
@@ -141,9 +144,16 @@ dependencies {
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-    compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cc_tweaked_version}")
-    compileOnly(fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cc_tweaked_version}"))
-    runtimeOnly(fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}"))
+    implementation fg.deobf("org.squiddev:cc-tweaked-${cc_tweaked_version}")
+
+    shade 'com.googlecode.soundlibs:tritonus-share:0.3.7.4'
+    shade 'com.googlecode.soundlibs:jorbis:0.0.17.4'
+    shade 'com.googlecode.soundlibs:vorbisspi:1.0.3.3'
+    shade('org.apache.tika:tika-core:2.9.2') {
+        exclude group: 'org.slf4j'
+        exclude group: 'commons-io', module: 'commons-io'
+    }
+
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -159,6 +169,25 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+}
+
+shadowJar {
+    configurations = [project.configurations.shade]
+
+    archiveClassifier.set('')
+
+    archiveFileName.set("${mod_id}-${minecraft_version}-${mod_version}.jar")
+
+    mergeServiceFiles()
+
+    finalizedBy 'reobfShadowJar'
+
+    relocate 'com.jcraft', 'org.firedragon91245.cctresourceapi.jcraft'
+    relocate 'javazoom.spi', 'org.firedragon91245.cctresourceapi.javazoom.spi'
+    relocate 'org.tritonus', 'org.firedragon91245.cctresourceapi.tritonus'
+    // relocate 'org.slf4j', 'org.firedragon91245.cctresourceapi.slf4j'
+    // relocate 'org.apache.commons.io', 'org.firedragon91245.cctresourceapi.apache.commons.io'
+    relocate 'org.apache.tika', 'org.firedragon91245.cctresourceapi.apache.tika'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.
@@ -202,8 +231,14 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 
-tasks.jar {
+jar {
+    archiveClassifier = 'slim'
     manifest {
-        setArchiveFileName("${mod_id}-${minecraft_version}-${mod_version}.jar")
     }
+}
+
+assemble.dependsOn shadowJar
+
+reobf {
+    shadowJar {}
 }
