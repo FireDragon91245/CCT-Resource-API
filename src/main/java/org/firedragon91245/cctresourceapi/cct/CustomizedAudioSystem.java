@@ -1,5 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import javax.annotation.Nullable;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -14,12 +15,19 @@ public class CustomizedAudioSystem {
     private final List<ClassLoader> loaders;
     private final List<AudioFileReader> readers;
     private final List<FormatConversionProvider> conversions;
+    private final CustomizedAudioSystem base;
 
-    protected CustomizedAudioSystem(final List<ClassLoader> loaders, final List<AudioFileReader> readers, final List<FormatConversionProvider> conversions)
+    protected CustomizedAudioSystem(final List<ClassLoader> loaders, final List<AudioFileReader> readers, final List<FormatConversionProvider> conversions, @Nullable CustomizedAudioSystem base)
     {
         this.loaders = loaders;
         this.readers = readers;
         this.conversions = conversions;
+
+        if(base == null)
+        {
+            base = this;
+        }
+        this.base = base;
     }
 
     public AudioInputStream getAudioInputStream(AudioFormat.Encoding targetEncoding,
@@ -73,6 +81,13 @@ public class CustomizedAudioSystem {
         for(final FormatConversionProvider provider : conversions) {
             if(providers.stream().noneMatch(p -> p.getClass().equals(provider.getClass()))) {
                 providers.add(provider);
+            }
+        }
+
+        for(final FormatConversionProvider provider : base.conversions) {
+            if(provider instanceof CustomizedFormatConversionProvider)
+            {
+                ((CustomizedFormatConversionProvider) provider).setCustomizedAudiosSystem(this.base);
             }
         }
 

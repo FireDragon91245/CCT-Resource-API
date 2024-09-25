@@ -10,6 +10,7 @@ public class CustomizedAudioSystemFactory {
     private final List<ClassLoader> loaders;
     private final List<AudioFileReader> readers;
     private final List<FormatConversionProvider> conversions;
+    private CustomizedAudioSystem baseAudioSystem;
 
     private CustomizedAudioSystemFactory() {
         loaders = new ArrayList<>();
@@ -40,8 +41,18 @@ public class CustomizedAudioSystemFactory {
         return this;
     }
 
+    public CustomizedAudioSystemFactory useCustomizedBaseAudioSystem(final CustomizedAudioSystem base)
+    {
+        if(this.baseAudioSystem != null)
+        {
+            throw new IllegalStateException("Base audio system is already set");
+        }
+        this.baseAudioSystem = base;
+        return this;
+    }
+
     public CustomizedAudioSystem build()
     {
-        return new CustomizedAudioSystem(loaders, readers, conversions);
+        return new CustomizedAudioSystem(loaders, readers, conversions, baseAudioSystem);
     }
 }
