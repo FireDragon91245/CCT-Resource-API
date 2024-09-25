@@ -31,10 +31,5 @@ public class CCT_Resource_API {
 
         ComputerCraftAPI.registerAPIFactory(new ResourceAPI.Factory());
 
-        AudioFileFormat.Type[] t = AudioSystem.getAudioFileTypes();
-        for (AudioFileFormat.Type type : t) {
-            LOGGER.info(type.getExtension());
-        }
-
     }
 }
