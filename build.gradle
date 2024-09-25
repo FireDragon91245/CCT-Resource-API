@@ -144,7 +144,9 @@ dependencies {
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
-    implementation fg.deobf("org.squiddev:cc-tweaked-${cc_tweaked_version}")
+    compileOnly("cc.tweaked:cc-tweaked-${minecraft_version}-core-api:${cc_tweaked_version}")
+    compileOnly(fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge-api:${cc_tweaked_version}"))
+    runtimeOnly(fg.deobf("cc.tweaked:cc-tweaked-${minecraft_version}-forge:${cc_tweaked_version}"))
 
     shade 'com.googlecode.soundlibs:tritonus-share:0.3.7.4'
     shade 'com.googlecode.soundlibs:jorbis:0.0.17.4'

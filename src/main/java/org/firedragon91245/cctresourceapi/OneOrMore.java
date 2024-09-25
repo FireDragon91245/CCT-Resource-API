@@ -10,8 +10,7 @@ public class OneOrMore<T> {
     private T one;
     private T[] more;
 
-    private OneOrMore()
-    {
+    private OneOrMore() {
 
     }
 

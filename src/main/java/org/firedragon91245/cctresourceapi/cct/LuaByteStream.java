@@ -28,7 +28,7 @@ public class LuaByteStream {
     final public Double read() throws LuaException {
         try {
             int result = baseInStream.read();
-            if(result == -1) {
+            if (result == -1) {
                 return null;
             }
             return (double) result;

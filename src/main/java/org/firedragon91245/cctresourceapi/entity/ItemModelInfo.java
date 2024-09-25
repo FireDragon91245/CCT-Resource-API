@@ -4,10 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ItemModelInfo implements IModelInfo {
-    private final String itemId;
-    public ItemModel rootModel;
     final public Map<String, ItemModel> models;
     final public Map<String, ModelTexture> textures;
+    private final String itemId;
+    public ItemModel rootModel;
 
     public ItemModelInfo(String itemId) {
         this.itemId = itemId;
@@ -17,17 +17,17 @@ public class ItemModelInfo implements IModelInfo {
 
     public Map<String, Object> asHashMap() {
         Map<String, Object> result = new HashMap<>();
-        if(rootModel != null)
+        if (rootModel != null)
             result.put("rootModel", rootModel.asHashMap());
         Map<String, Object> modelsMap = new HashMap<>();
         for (Map.Entry<String, ItemModel> entry : models.entrySet()) {
-            if(entry.getValue() != null)
+            if (entry.getValue() != null)
                 modelsMap.put(entry.getKey(), entry.getValue().asHashMap());
         }
         result.put("models", modelsMap);
         Map<String, Object> texturesMap = new HashMap<>();
         for (Map.Entry<String, ModelTexture> entry : textures.entrySet()) {
-            if(entry.getValue() != null)
+            if (entry.getValue() != null)
                 texturesMap.put(entry.getKey(), entry.getValue().asHashMap());
         }
         result.put("textures", texturesMap);

@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.forgespi.language.IModFileInfo;
 import net.minecraftforge.forgespi.locating.IModFile;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.tika.Tika;
 import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 import org.firedragon91245.cctresourceapi.entity.*;
@@ -22,7 +23,6 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -299,7 +299,7 @@ public class ResourceLoading {
     }
 
     protected static void loadBlockModelInfo(Block b, Map<String, Object> blockInfo) {
-        ResourceLocation blockId = b.getRegistryName();
+        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(b);
         if (blockId == null)
             return;
 
@@ -351,7 +351,7 @@ public class ResourceLoading {
     }
 
     public static void loadItemModelInfo(Item item, HashMap<String, Object> itemInfo) {
-        ResourceLocation itemId = item.getRegistryName();
+        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(item);
         if (itemId == null)
             return;
 
@@ -475,17 +475,15 @@ public class ResourceLoading {
     }
 
     public static SoundInfo getSoundInfo(SoundEvent soundEvent) {
-        ResourceLocation soundId = soundEvent.getRegistryName();
+        ResourceLocation soundId = ForgeRegistries.SOUND_EVENTS.getKey(soundEvent);
         if (soundId == null)
             return null;
 
         if (soundId.getNamespace().equals("minecraft")) {
             try (JsonReader soundsJson = loadBundledFileJson("bundled_resources/minecraft/sounds.json")) {
-                if (soundEvent.getRegistryName() == null)
+                if (soundsJson == null)
                     return null;
-                if(soundsJson == null)
-                    return null;
-                return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
+                return loadSpecificJsonKey(soundsJson, soundId.getPath(), SoundInfo.class);
             } catch (IOException ignored) {
             }
         } else {
@@ -495,11 +493,9 @@ public class ResourceLoading {
 
             try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 try (JsonReader soundsJson = loadFileJson(loader, "assets/" + soundId.getNamespace() + "/sounds.json")) {
-                    if (soundEvent.getRegistryName() == null)
+                    if (soundsJson == null)
                         return null;
-                    if(soundsJson == null)
-                        return null;
-                    return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
+                    return loadSpecificJsonKey(soundsJson, soundId.getPath(), SoundInfo.class);
                 } catch (IOException ignored) {
                 }
             } catch (IOException e) {
@@ -563,7 +559,7 @@ public class ResourceLoading {
     private static AudioInputStream loadFileSoundStream(URLClassLoader loader, String s) {
         try {
             InputStream soundStream = loader.getResourceAsStream(s);
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
@@ -595,7 +591,7 @@ public class ResourceLoading {
 
     private static SoundData loadFileSoundData(URLClassLoader loader, String s) {
         try (InputStream soundStream = loader.getResourceAsStream(s)) {
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return soundDataFromAudioStream(s, soundStream);
         } catch (IOException | UnsupportedAudioFileException ignored) {
@@ -645,7 +641,7 @@ public class ResourceLoading {
 
     private static SoundData loadFileBundledSoundData(String s) {
         try (InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s)) {
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return soundDataFromAudioStream(s, soundStream);
         } catch (IOException | UnsupportedAudioFileException e) {
@@ -657,7 +653,7 @@ public class ResourceLoading {
     private static AudioInputStream loadFileBundledSoundStream(String s) {
         try {
             InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s);
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
@@ -682,18 +678,6 @@ public class ResourceLoading {
         );
 
         AudioFormat sourceFormat = originalAudio.getFormat();
-
-        // AudioFormat.Encoding[] encodings = AUDIO_SYSTEM.getTargetEncodings(sourceFormat);
-        // System.out.println("Supported Encodings:");
-        // for (AudioFormat.Encoding encoding : encodings) {
-        //     System.out.println(encoding);
-        // }
-
-        // AudioFormat[] formats = AUDIO_SYSTEM.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, sourceFormat);
-        // System.out.println("Supported Target Formats for PCM_SIGNED:");
-        // for (AudioFormat format : formats) {
-        //     System.out.println(format);
-        // }
 
         if (!AUDIO_SYSTEM.isConversionSupported(targetFormat, sourceFormat)) {
             throw new UnsupportedAudioFileException("Conversion to target format not supported.");

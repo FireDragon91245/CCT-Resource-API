@@ -8,7 +8,10 @@ import javax.sound.sampled.spi.AudioFileReader;
 import javax.sound.sampled.spi.FormatConversionProvider;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.ServiceLoader;
 
 public class CustomizedAudioSystem {
 
@@ -17,21 +20,19 @@ public class CustomizedAudioSystem {
     private final List<FormatConversionProvider> conversions;
     private final CustomizedAudioSystem base;
 
-    protected CustomizedAudioSystem(final List<ClassLoader> loaders, final List<AudioFileReader> readers, final List<FormatConversionProvider> conversions, @Nullable CustomizedAudioSystem base)
-    {
+    protected CustomizedAudioSystem(final List<ClassLoader> loaders, final List<AudioFileReader> readers, final List<FormatConversionProvider> conversions, @Nullable CustomizedAudioSystem base) {
         this.loaders = loaders;
         this.readers = readers;
         this.conversions = conversions;
 
-        if(base == null)
-        {
+        if (base == null) {
             base = this;
         }
         this.base = base;
     }
 
     public AudioInputStream getAudioInputStream(AudioFormat.Encoding targetEncoding,
-                                                       AudioInputStream sourceStream) {
+                                                AudioInputStream sourceStream) {
         Objects.requireNonNull(targetEncoding);
         Objects.requireNonNull(sourceStream);
         if (sourceStream.getFormat().getEncoding().equals(targetEncoding)) {
@@ -50,7 +51,7 @@ public class CustomizedAudioSystem {
     }
 
     public AudioInputStream getAudioInputStream(AudioFormat targetFormat,
-                                                       AudioInputStream sourceStream) {
+                                                AudioInputStream sourceStream) {
         if (sourceStream.getFormat().matches(targetFormat)) {
             return sourceStream;
         }
@@ -69,24 +70,23 @@ public class CustomizedAudioSystem {
 
     private List<FormatConversionProvider> getFormatConversionProviders() {
         List<FormatConversionProvider> providers = new ArrayList<>();
-        for(final ClassLoader classLoader : loaders) {
+        for (final ClassLoader classLoader : loaders) {
             ServiceLoader<FormatConversionProvider> loader = ServiceLoader.load(FormatConversionProvider.class, classLoader);
-            for(FormatConversionProvider provider : loader) {
-                if(providers.stream().noneMatch(p -> p.getClass().equals(provider.getClass()))) {
+            for (FormatConversionProvider provider : loader) {
+                if (providers.stream().noneMatch(p -> p.getClass().equals(provider.getClass()))) {
                     providers.add(provider);
                 }
             }
         }
 
-        for(final FormatConversionProvider provider : conversions) {
-            if(providers.stream().noneMatch(p -> p.getClass().equals(provider.getClass()))) {
+        for (final FormatConversionProvider provider : conversions) {
+            if (providers.stream().noneMatch(p -> p.getClass().equals(provider.getClass()))) {
                 providers.add(provider);
             }
         }
 
-        for(final FormatConversionProvider provider : base.conversions) {
-            if(provider instanceof CustomizedFormatConversionProvider)
-            {
+        for (final FormatConversionProvider provider : base.conversions) {
+            if (provider instanceof CustomizedFormatConversionProvider) {
                 ((CustomizedFormatConversionProvider) provider).setCustomizedAudiosSystem(this.base);
             }
         }
@@ -112,20 +112,17 @@ public class CustomizedAudioSystem {
     private List<AudioFileReader> getAudioFileReaders() {
         List<AudioFileReader> readers = new ArrayList<>();
 
-        for(final ClassLoader loader : loaders)
-        {
+        for (final ClassLoader loader : loaders) {
             ServiceLoader<AudioFileReader> serviceLoader = ServiceLoader.load(AudioFileReader.class, loader);
-            for(AudioFileReader reader : serviceLoader) {
-                if(readers.stream().noneMatch(r -> r.getClass().equals(reader.getClass())))
-                {
+            for (AudioFileReader reader : serviceLoader) {
+                if (readers.stream().noneMatch(r -> r.getClass().equals(reader.getClass()))) {
                     readers.add(reader);
                 }
             }
         }
 
-        for(final AudioFileReader reader : this.readers) {
-            if(readers.stream().noneMatch(r -> r.getClass().equals(reader.getClass())))
-            {
+        for (final AudioFileReader reader : this.readers) {
+            if (readers.stream().noneMatch(r -> r.getClass().equals(reader.getClass()))) {
                 readers.add(reader);
             }
         }
