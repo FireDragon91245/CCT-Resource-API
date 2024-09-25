@@ -133,7 +133,7 @@ repositories {
 
 configurations {
     shade
-    implementation.extendsFrom shade
+    minecraftLibrary.extendsFrom shade
 }
 
 dependencies {
