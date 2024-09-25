@@ -1,7 +1,5 @@
 package org.firedragon91245.cctresourceapi;
 
-import com.google.gson.reflect.TypeToken;
-
 import javax.annotation.Nullable;
 import java.lang.reflect.Array;
 import java.util.List;

@@ -2,6 +2,8 @@ package org.firedragon91245.cctresourceapi.cct;
 
 import com.google.gson.stream.JsonReader;
 import dan200.computercraft.api.lua.LuaException;
+import javazoom.spi.vorbis.sampled.convert.VorbisFormatConversionProvider;
+import javazoom.spi.vorbis.sampled.file.VorbisAudioFileReader;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.Item;
@@ -20,7 +22,6 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -33,6 +34,11 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 public class ResourceLoading {
+    private static final CustomizedAudioSystem AUDIO_SYSTEM = CustomizedAudioSystemFactory.empty()
+            .withProvidersFromClassLoader(VorbisAudioFileReader.class.getClassLoader())
+            .withProvidersFromClassLoader(VorbisFormatConversionProvider.class.getClassLoader())
+            .build();
+
     @Nullable
     protected static BlockModelInfo loadBlockModelInfoByBlockId(@Nonnull ResourceLocation location) {
         BlockModelInfo modelInfo = new BlockModelInfo(location);
@@ -319,7 +325,7 @@ public class ResourceLoading {
 
             Object imageBytesObj = imageMap.get("imageBytes");
             Object formatObj = imageMap.get("formatName");
-            if (imageBytesObj instanceof Map && formatObj instanceof String format) {
+            if (imageBytesObj instanceof Map && formatObj instanceof String) {
                 Map<Integer, Double> imageBytes = (Map<Integer, Double>) imageBytesObj;
                 Byte[] bytes = imageBytes.entrySet().stream()
                         .sorted(Comparator.comparingInt(Map.Entry::getKey))
@@ -555,7 +561,9 @@ public class ResourceLoading {
     private static AudioInputStream loadFileSoundStream(URLClassLoader loader, String s) {
         try {
             InputStream soundStream = loader.getResourceAsStream(s);
-            return AudioSystem.getAudioInputStream(new BufferedInputStream(soundStream));
+            if(soundStream == null)
+                return null;
+            return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
             CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
         }
@@ -585,7 +593,7 @@ public class ResourceLoading {
 
     private static SoundData loadFileSoundData(URLClassLoader loader, String s) {
         try (InputStream soundStream = loader.getResourceAsStream(s)) {
-            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundStream);
+            AudioInputStream audioInputStream = AUDIO_SYSTEM.getAudioInputStream(soundStream);
             AudioFormat format = audioInputStream.getFormat();
 
             return soundDataFromAudioStream(s, soundStream, audioInputStream, format);
@@ -616,7 +624,7 @@ public class ResourceLoading {
 
     private static SoundData loadFileBundledSoundData(String s) {
         try (InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s)) {
-            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(soundStream);
+            AudioInputStream audioInputStream = AUDIO_SYSTEM.getAudioInputStream(soundStream);
             AudioFormat format = audioInputStream.getFormat();
 
             return soundDataFromAudioStream(s, soundStream, audioInputStream, format);
@@ -629,7 +637,9 @@ public class ResourceLoading {
     private static AudioInputStream loadFileBundledSoundStream(String s) {
         try {
             InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s);
-            return AudioSystem.getAudioInputStream(new BufferedInputStream(soundStream));
+            if(soundStream == null)
+                return null;
+            return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
             CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
         }
@@ -639,7 +649,7 @@ public class ResourceLoading {
     protected static ByteArrayOutputStream convertToSpeakerFormat(InputStream inputStream)
             throws UnsupportedAudioFileException, IOException {
 
-        AudioInputStream originalAudio = AudioSystem.getAudioInputStream(inputStream);
+        AudioInputStream originalAudio = AUDIO_SYSTEM.getAudioInputStream(inputStream);
 
         AudioFormat targetFormat = new AudioFormat(
                 AudioFormat.Encoding.PCM_SIGNED, // Encoding
@@ -653,24 +663,24 @@ public class ResourceLoading {
 
         AudioFormat sourceFormat = originalAudio.getFormat();
 
-        AudioFormat.Encoding[] encodings = AudioSystem.getTargetEncodings(sourceFormat);
-        System.out.println("Supported Encodings:");
-        for (AudioFormat.Encoding encoding : encodings) {
-            System.out.println(encoding);
-        }
+        // AudioFormat.Encoding[] encodings = AUDIO_SYSTEM.getTargetEncodings(sourceFormat);
+        // System.out.println("Supported Encodings:");
+        // for (AudioFormat.Encoding encoding : encodings) {
+        //     System.out.println(encoding);
+        // }
 
-        AudioFormat[] formats = AudioSystem.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, sourceFormat);
-        System.out.println("Supported Target Formats for PCM_SIGNED:");
-        for (AudioFormat format : formats) {
-            System.out.println(format);
-        }
+        // AudioFormat[] formats = AUDIO_SYSTEM.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, sourceFormat);
+        // System.out.println("Supported Target Formats for PCM_SIGNED:");
+        // for (AudioFormat format : formats) {
+        //     System.out.println(format);
+        // }
 
-        if (!AudioSystem.isConversionSupported(targetFormat, sourceFormat)) {
+        if (!AUDIO_SYSTEM.isConversionSupported(targetFormat, sourceFormat)) {
             throw new UnsupportedAudioFileException("Conversion to target format not supported.");
         }
 
         // Convert the audio to the target format
-        AudioInputStream convertedAudio = AudioSystem.getAudioInputStream(targetFormat, originalAudio);
+        AudioInputStream convertedAudio = AUDIO_SYSTEM.getAudioInputStream(targetFormat, originalAudio);
 
         PcmSigned16To8ResampleStream resampledAudio = new PcmSigned16To8ResampleStream(convertedAudio);
         ByteArrayOutputStream out = readEverythingToByteOutputStream(resampledAudio);
