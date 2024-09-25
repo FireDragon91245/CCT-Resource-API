@@ -22,6 +22,7 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -34,9 +35,10 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 public class ResourceLoading {
-    private static final CustomizedAudioSystem AUDIO_SYSTEM = CustomizedAudioSystemFactory.empty()
+    protected static final CustomizedAudioSystem AUDIO_SYSTEM = CustomizedAudioSystemFactory.empty()
             .withProvidersFromClassLoader(VorbisAudioFileReader.class.getClassLoader())
             .withProvidersFromClassLoader(VorbisFormatConversionProvider.class.getClassLoader())
+            .withAudioConversionProvider(new StereoVorbisToMonoPCMProvider())
             .build();
 
     @Nullable
@@ -593,23 +595,42 @@ public class ResourceLoading {
 
     private static SoundData loadFileSoundData(URLClassLoader loader, String s) {
         try (InputStream soundStream = loader.getResourceAsStream(s)) {
-            AudioInputStream audioInputStream = AUDIO_SYSTEM.getAudioInputStream(soundStream);
-            AudioFormat format = audioInputStream.getFormat();
-
-            return soundDataFromAudioStream(s, soundStream, audioInputStream, format);
+            if(soundStream == null)
+                return null;
+            return soundDataFromAudioStream(s, soundStream);
         } catch (IOException | UnsupportedAudioFileException ignored) {
         }
         return null;
     }
 
-    private static SoundData soundDataFromAudioStream(String s, InputStream soundStream, AudioInputStream audioInputStream, AudioFormat format) throws IOException {
-        SoundData result = new SoundData();
-        result.loadProperties(format, audioInputStream);
+    private static SoundData soundDataFromAudioStream(String s, InputStream soundStream) throws IOException, UnsupportedAudioFileException {
+        final int BUFFER_SIZE = 1024 * 1024; // 1MB
 
+        SoundData result = new SoundData();
+
+        BufferedInputStream bufferedStream = new BufferedInputStream(soundStream, BUFFER_SIZE);
+
+        // Mark the stream to allow resetting it later
+        bufferedStream.mark(BUFFER_SIZE);
+
+        // Limit the stream to 1MB for Tika to detect the mime type
+        LimitedInputStream limitedStream = new LimitedInputStream(bufferedStream, BUFFER_SIZE);
+
+        // Use Tika to detect mime type, but it can only read up to 1MB
         Tika tika = new Tika();
-        String mimeType = tika.detect(soundStream, s);
+        String mimeType = tika.detect(limitedStream, s);
         result.setMimeType(mimeType);
 
+        // Reset the stream so it can be used for the audioInputStream
+        bufferedStream.reset();
+
+        // Use the stream with the Audio System after reset
+        AudioInputStream audioInputStream = AUDIO_SYSTEM.getAudioInputStream(bufferedStream);
+        AudioFormat format = audioInputStream.getFormat();
+
+        result.loadProperties(format, audioInputStream);
+
+        // Read and store the audio data
         ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
         byte[] buffer = new byte[4096]; // 4KB buffer
         int bytesRead;
@@ -624,10 +645,9 @@ public class ResourceLoading {
 
     private static SoundData loadFileBundledSoundData(String s) {
         try (InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s)) {
-            AudioInputStream audioInputStream = AUDIO_SYSTEM.getAudioInputStream(soundStream);
-            AudioFormat format = audioInputStream.getFormat();
-
-            return soundDataFromAudioStream(s, soundStream, audioInputStream, format);
+            if(soundStream == null)
+                return null;
+            return soundDataFromAudioStream(s, soundStream);
         } catch (IOException | UnsupportedAudioFileException e) {
             CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
         }
@@ -649,7 +669,7 @@ public class ResourceLoading {
     protected static ByteArrayOutputStream convertToSpeakerFormat(InputStream inputStream)
             throws UnsupportedAudioFileException, IOException {
 
-        AudioInputStream originalAudio = AUDIO_SYSTEM.getAudioInputStream(inputStream);
+        AudioInputStream originalAudio = AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(inputStream));
 
         AudioFormat targetFormat = new AudioFormat(
                 AudioFormat.Encoding.PCM_SIGNED, // Encoding

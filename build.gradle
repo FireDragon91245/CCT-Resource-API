@@ -182,7 +182,6 @@ shadowJar {
     relocate 'com.jcraft', 'org.firedragon91245.cctresourceapi.jcraft'
     relocate 'javazoom.spi.vorbis.sampled', 'org.firedragon91245.cctresourceapi.javazoom.spi.vorbis.sampled'
     relocate 'org.apache', 'org.firedragon91245.cctresourceapi.apache'
-    relocate 'org.slf4j', 'org.firedragon91245.cctresourceapi.slf4j'
     relocate 'org.tritonus', 'org.firedragon91245.cctresourceapi.tritonus'
 }
 

@@ -30,9 +30,9 @@ public class LuaPcmSigned16SampleStream extends LuaByteStream {
         {
             useConversionStream = true;
 
-            if(AudioSystem.isConversionSupported(TARGET_FORMAT, baseStream.getFormat()))
+            if(ResourceLoading.AUDIO_SYSTEM.isConversionSupported(TARGET_FORMAT, baseStream.getFormat()))
             {
-                convertedAudioStream = AudioSystem.getAudioInputStream(TARGET_FORMAT, baseStream);
+                convertedAudioStream = ResourceLoading.AUDIO_SYSTEM.getAudioInputStream(TARGET_FORMAT, baseStream);
             }
             else
             {
