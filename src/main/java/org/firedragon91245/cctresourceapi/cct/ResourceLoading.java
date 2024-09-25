@@ -1,13 +1,17 @@
 package org.firedragon91245.cctresourceapi.cct;
 
+import com.google.gson.stream.JsonReader;
 import dan200.computercraft.api.lua.LuaException;
+import javazoom.spi.vorbis.sampled.convert.VorbisFormatConversionProvider;
+import javazoom.spi.vorbis.sampled.file.VorbisAudioFileReader;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.forgespi.language.IModFileInfo;
 import net.minecraftforge.forgespi.locating.IModFile;
-import net.minecraftforge.registries.ForgeRegistries;
+import org.apache.tika.Tika;
 import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 import org.firedragon91245.cctresourceapi.entity.*;
 
@@ -16,6 +20,10 @@ import javax.annotation.Nullable;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -27,6 +35,12 @@ import java.util.*;
 import java.util.function.BiFunction;
 
 public class ResourceLoading {
+    protected static final CustomizedAudioSystem AUDIO_SYSTEM = CustomizedAudioSystemFactory.empty()
+            .withProvidersFromClassLoader(VorbisAudioFileReader.class.getClassLoader())
+            .withProvidersFromClassLoader(VorbisFormatConversionProvider.class.getClassLoader())
+            .withAudioConversionProvider(new StereoVorbisToMonoPCMProvider())
+            .build();
+
     @Nullable
     protected static BlockModelInfo loadBlockModelInfoByBlockId(@Nonnull ResourceLocation location) {
         BlockModelInfo modelInfo = new BlockModelInfo(location);
@@ -46,8 +60,7 @@ public class ResourceLoading {
                     modelInfo.models.putAll(getParentModelsRecursive(modelInfo));
                     loadModelTextures(modelInfo);
                     return modelInfo;
-                }
-                else {
+                } else {
                     return null;
                 }
             }
@@ -62,11 +75,10 @@ public class ResourceLoading {
                 jarUrl = new URL("jar:file:" + f.getAbsolutePath() + "!/");
             } catch (MalformedURLException ignored) {
             }
-            if(jarUrl == null)
+            if (jarUrl == null)
                 return null;
 
-            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
-            {
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 Optional<String> stateModelJson = loadFileText(loader, "assets/" + location.getNamespace() + "/blockstates/" + location.getPath() + ".json");
                 if (stateModelJson.isPresent()) {
                     return loadStatefulBlockModelInfo(modelInfo, stateModelJson.get());
@@ -115,19 +127,19 @@ public class ResourceLoading {
         modelInfo.statefullModel = true;
         modelInfo.modelState = stateModel;
         modelInfo.modelState.variants.forEach((key, value) -> {
-            if(value == null)
+            if (value == null)
                 return;
             value.ifOneOrElse(
                     one ->
                     {
-                        if(modelInfo.models.containsKey(one.model))
+                        if (modelInfo.models.containsKey(one.model))
                             return;
                         BlockModel model = loadBlockModelByLocation(one.model);
                         modelInfo.models.put(one.model, model);
                     },
                     more -> {
                         for (BlockStateModelVariant variant : more) {
-                            if(modelInfo.models.containsKey(variant.model))
+                            if (modelInfo.models.containsKey(variant.model))
                                 continue;
                             BlockModel model = loadBlockModelByLocation(variant.model);
                             modelInfo.models.put(variant.model, model);
@@ -201,8 +213,7 @@ public class ResourceLoading {
     }
 
     private static Optional<ModelTexture> getModelTexture(String texture) {
-        if(!texture.contains(":"))
-        {
+        if (!texture.contains(":")) {
             texture = "minecraft:" + texture;
         }
         if (texture.startsWith("minecraft:")) {
@@ -219,11 +230,10 @@ public class ResourceLoading {
             } catch (MalformedURLException ignored) {
             }
 
-            if(jarUrl == null)
+            if (jarUrl == null)
                 return Optional.empty();
 
-            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
-            {
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 return loadFileImage(loader, "assets/" + texture.split(":")[0] + "/textures/" + texture.split(":")[1] + ".png");
             } catch (IOException e) {
                 CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
@@ -233,8 +243,7 @@ public class ResourceLoading {
     }
 
     protected static BlockModel loadBlockModelByLocation(String model) {
-        if(!model.contains(":"))
-        {
+        if (!model.contains(":")) {
             model = "minecraft:" + model;
         }
         if (model.startsWith("minecraft:")) {
@@ -252,11 +261,10 @@ public class ResourceLoading {
             } catch (MalformedURLException ignored) {
             }
 
-            if(jarUrl == null)
+            if (jarUrl == null)
                 return null;
 
-            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
-            {
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 Optional<String> modelJson = loadFileText(loader, "assets/" + model.split(":")[0] + "/models/" + model.split(":")[1] + ".json");
                 return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, BlockModel.class)).orElse(null);
             } catch (IOException e) {
@@ -291,7 +299,7 @@ public class ResourceLoading {
     }
 
     protected static void loadBlockModelInfo(Block b, Map<String, Object> blockInfo) {
-        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(b);
+        ResourceLocation blockId = b.getRegistryName();
         if (blockId == null)
             return;
 
@@ -319,7 +327,7 @@ public class ResourceLoading {
 
             Object imageBytesObj = imageMap.get("imageBytes");
             Object formatObj = imageMap.get("formatName");
-            if (imageBytesObj instanceof Map && formatObj instanceof String format) {
+            if (imageBytesObj instanceof Map && formatObj instanceof String) {
                 Map<Integer, Double> imageBytes = (Map<Integer, Double>) imageBytesObj;
                 Byte[] bytes = imageBytes.entrySet().stream()
                         .sorted(Comparator.comparingInt(Map.Entry::getKey))
@@ -343,7 +351,7 @@ public class ResourceLoading {
     }
 
     public static void loadItemModelInfo(Item item, HashMap<String, Object> itemInfo) {
-        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(item);
+        ResourceLocation itemId = item.getRegistryName();
         if (itemId == null)
             return;
 
@@ -354,8 +362,7 @@ public class ResourceLoading {
         itemInfo.put("model", model.asHashMap());
     }
 
-    private static URL getModURLFromModId(String modid)
-    {
+    private static URL getModURLFromModId(String modid) {
         File f = getModJarFromModId(modid).orElse(null);
         if (f == null)
             return null;
@@ -381,17 +388,15 @@ public class ResourceLoading {
                 modelInfo.models.putAll(getParentModelsRecursiveItem(modelInfo));
                 loadModelTextures(modelInfo);
                 return modelInfo;
-            }
-            else {
+            } else {
                 return null;
             }
         } else {
             URL jarUrl = getModURLFromModId(itemId.getNamespace());
-            if(jarUrl == null)
+            if (jarUrl == null)
                 return null;
 
-            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
-            {
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 Optional<String> modelJson = loadFileText(loader, "assets/" + itemId.getNamespace() + "/models/item/" + itemId.getPath() + ".json");
                 if (modelJson.isPresent()) {
                     ItemModel model = CCT_Resource_API.GSON.fromJson(modelJson.get(), ItemModel.class);
@@ -410,14 +415,13 @@ public class ResourceLoading {
         return null;
     }
 
-    private static void loadModelTextures(IModelInfo modelInfo)
-    {
+    private static void loadModelTextures(IModelInfo modelInfo) {
         modelInfo.getModels().forEach((key, value) -> {
             if (value != null) {
                 if (value.getTextures() != null) {
                     value.getTextures().forEach((key1, value1) -> {
                         if (value1 != null && !value1.startsWith("#")) {
-                            if(modelInfo.getTextures().containsKey(value1))
+                            if (modelInfo.getTextures().containsKey(value1))
                                 return;
                             Optional<ModelTexture> texture = getModelTexture(value1);
                             texture.ifPresent(modelTexture -> modelInfo.putTexture(value1, modelTexture));
@@ -448,8 +452,7 @@ public class ResourceLoading {
     }
 
     private static ItemModel loadItemModelByLocation(String parent) {
-        if(!parent.contains(":"))
-        {
+        if (!parent.contains(":")) {
             parent = "minecraft:" + parent;
         }
         if (parent.startsWith("minecraft:")) {
@@ -458,11 +461,10 @@ public class ResourceLoading {
             return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, ItemModel.class)).orElse(null);
         } else {
             URL jarUrl = getModURLFromModId(parent.split(":")[0]);
-            if(jarUrl == null)
+            if (jarUrl == null)
                 return null;
 
-            try(URLClassLoader loader = new URLClassLoader(new URL[]{ jarUrl }))
-            {
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
                 Optional<String> modelJson = loadFileText(loader, "assets/" + parent.split(":")[0] + "/models/" + parent.split(":")[1] + ".json");
                 return modelJson.map(s -> CCT_Resource_API.GSON.fromJson(s, ItemModel.class)).orElse(null);
             } catch (IOException e) {
@@ -470,5 +472,256 @@ public class ResourceLoading {
             }
             return null;
         }
+    }
+
+    public static SoundInfo getSoundInfo(SoundEvent soundEvent) {
+        ResourceLocation soundId = soundEvent.getRegistryName();
+        if (soundId == null)
+            return null;
+
+        if (soundId.getNamespace().equals("minecraft")) {
+            try (JsonReader soundsJson = loadBundledFileJson("bundled_resources/minecraft/sounds.json")) {
+                if (soundEvent.getRegistryName() == null)
+                    return null;
+                if(soundsJson == null)
+                    return null;
+                return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
+            } catch (IOException ignored) {
+            }
+        } else {
+            URL jarUrl = getModURLFromModId(soundId.getNamespace());
+            if (jarUrl == null)
+                return null;
+
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
+                try (JsonReader soundsJson = loadFileJson(loader, "assets/" + soundId.getNamespace() + "/sounds.json")) {
+                    if (soundEvent.getRegistryName() == null)
+                        return null;
+                    if(soundsJson == null)
+                        return null;
+                    return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
+                } catch (IOException ignored) {
+                }
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+        }
+        return null;
+    }
+
+    private static JsonReader loadFileJson(URLClassLoader loader, String s) {
+        try (InputStream modelStream = loader.getResourceAsStream(s)) {
+            if (modelStream == null)
+                return null;
+            return new JsonReader(new InputStreamReader(modelStream));
+        } catch (IOException ignored) {
+        }
+        return null;
+    }
+
+    private static <T> T loadSpecificJsonKey(JsonReader soundsJson, String path, Class<? extends T> targetClass) throws IOException {
+        soundsJson.beginObject();
+        while (soundsJson.hasNext()) {
+            String key = soundsJson.nextName();
+            if (key.equals(path)) {
+                return CCT_Resource_API.GSON.fromJson(soundsJson, targetClass);
+            } else {
+                soundsJson.skipValue();
+            }
+        }
+        return null;
+    }
+
+    private static JsonReader loadBundledFileJson(String location) {
+        InputStream jsonStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(location);
+        if (jsonStream == null)
+            return null;
+        return new JsonReader(new InputStreamReader(jsonStream));
+    }
+
+    public static AudioInputStream loadSoundStream(String soundName) {
+        if (!soundName.contains(":")) {
+            soundName = "minecraft:" + soundName;
+        }
+
+        if (soundName.startsWith("minecraft:")) {
+            return loadFileBundledSoundStream("bundled_resources/minecraft/sounds/" + soundName.split(":")[1] + ".ogg");
+        } else {
+            URL jarUrl = getModURLFromModId(soundName.split(":")[0]);
+            if (jarUrl == null)
+                return null;
+
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
+                return loadFileSoundStream(loader, "assets/" + soundName.split(":")[0] + "/sounds/" + soundName.split(":")[1] + ".ogg");
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+        }
+        return null;
+    }
+
+    private static AudioInputStream loadFileSoundStream(URLClassLoader loader, String s) {
+        try {
+            InputStream soundStream = loader.getResourceAsStream(s);
+            if(soundStream == null)
+                return null;
+            return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
+        } catch (IOException | UnsupportedAudioFileException e) {
+            CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
+        }
+        return null;
+    }
+
+    public static SoundData loadSoundData(String soundName) {
+        if (!soundName.contains(":")) {
+            soundName = "minecraft:" + soundName;
+        }
+
+        if (soundName.startsWith("minecraft:")) {
+            return loadFileBundledSoundData("bundled_resources/minecraft/sounds/" + soundName.split(":")[1] + ".ogg");
+        } else {
+            URL jarUrl = getModURLFromModId(soundName.split(":")[0]);
+            if (jarUrl == null)
+                return null;
+
+            try (URLClassLoader loader = new URLClassLoader(new URL[]{jarUrl})) {
+                return loadFileSoundData(loader, "assets/" + soundName.split(":")[0] + "/sounds/" + soundName.split(":")[1] + ".ogg");
+            } catch (IOException e) {
+                CCT_Resource_API.LOGGER.error("Failed to load mod jar", e);
+            }
+        }
+        return null;
+    }
+
+    private static SoundData loadFileSoundData(URLClassLoader loader, String s) {
+        try (InputStream soundStream = loader.getResourceAsStream(s)) {
+            if(soundStream == null)
+                return null;
+            return soundDataFromAudioStream(s, soundStream);
+        } catch (IOException | UnsupportedAudioFileException ignored) {
+        }
+        return null;
+    }
+
+    private static SoundData soundDataFromAudioStream(String s, InputStream soundStream) throws IOException, UnsupportedAudioFileException {
+        final int BUFFER_SIZE = 1024 * 1024; // 1MB
+
+        SoundData result = new SoundData();
+
+        BufferedInputStream bufferedStream = new BufferedInputStream(soundStream, BUFFER_SIZE);
+
+        // Mark the stream to allow resetting it later
+        bufferedStream.mark(BUFFER_SIZE);
+
+        // Limit the stream to 1MB for Tika to detect the mime type
+        LimitedInputStream limitedStream = new LimitedInputStream(bufferedStream, BUFFER_SIZE);
+
+        // Use Tika to detect mime type, but it can only read up to 1MB
+        Tika tika = new Tika();
+        String mimeType = tika.detect(limitedStream, s);
+        result.setMimeType(mimeType);
+
+        // Reset the stream so it can be used for the audioInputStream
+        bufferedStream.reset();
+
+        // Use the stream with the Audio System after reset
+        AudioInputStream audioInputStream = AUDIO_SYSTEM.getAudioInputStream(bufferedStream);
+        AudioFormat format = audioInputStream.getFormat();
+
+        result.loadProperties(format, audioInputStream);
+
+        // Read and store the audio data
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096]; // 4KB buffer
+        int bytesRead;
+
+        while ((bytesRead = audioInputStream.read(buffer)) != -1) {
+            byteStream.write(buffer, 0, bytesRead);
+        }
+
+        result.setData(byteStream.toByteArray());
+        return result;
+    }
+
+    private static SoundData loadFileBundledSoundData(String s) {
+        try (InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s)) {
+            if(soundStream == null)
+                return null;
+            return soundDataFromAudioStream(s, soundStream);
+        } catch (IOException | UnsupportedAudioFileException e) {
+            CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
+        }
+        return null;
+    }
+
+    private static AudioInputStream loadFileBundledSoundStream(String s) {
+        try {
+            InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s);
+            if(soundStream == null)
+                return null;
+            return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
+        } catch (IOException | UnsupportedAudioFileException e) {
+            CCT_Resource_API.LOGGER.error("Failed to load sound data", e);
+        }
+        return null;
+    }
+
+    protected static ByteArrayOutputStream convertToSpeakerFormat(InputStream inputStream)
+            throws UnsupportedAudioFileException, IOException {
+
+        AudioInputStream originalAudio = AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(inputStream));
+
+        AudioFormat targetFormat = new AudioFormat(
+                AudioFormat.Encoding.PCM_SIGNED, // Encoding
+                48000,                           // Sample rate
+                16,                               // Sample size in bits
+                1,                               // Channels (mono)
+                2,                               // Frame size (bytes per frame)
+                48000,                           // Frame rate
+                false                            // Little endian
+        );
+
+        AudioFormat sourceFormat = originalAudio.getFormat();
+
+        // AudioFormat.Encoding[] encodings = AUDIO_SYSTEM.getTargetEncodings(sourceFormat);
+        // System.out.println("Supported Encodings:");
+        // for (AudioFormat.Encoding encoding : encodings) {
+        //     System.out.println(encoding);
+        // }
+
+        // AudioFormat[] formats = AUDIO_SYSTEM.getTargetFormats(AudioFormat.Encoding.PCM_SIGNED, sourceFormat);
+        // System.out.println("Supported Target Formats for PCM_SIGNED:");
+        // for (AudioFormat format : formats) {
+        //     System.out.println(format);
+        // }
+
+        if (!AUDIO_SYSTEM.isConversionSupported(targetFormat, sourceFormat)) {
+            throw new UnsupportedAudioFileException("Conversion to target format not supported.");
+        }
+
+        // Convert the audio to the target format
+        AudioInputStream convertedAudio = AUDIO_SYSTEM.getAudioInputStream(targetFormat, originalAudio);
+
+        PcmSigned16To8ResampleStream resampledAudio = new PcmSigned16To8ResampleStream(convertedAudio);
+        ByteArrayOutputStream out = readEverythingToByteOutputStream(resampledAudio);
+        resampledAudio.close();
+
+        return out;
+    }
+
+    private static ByteArrayOutputStream readEverythingToByteOutputStream(InputStream stream) {
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096]; // 4KB buffer
+        int bytesRead;
+
+        try {
+            while ((bytesRead = stream.read(buffer)) != -1) {
+                byteStream.write(buffer, 0, bytesRead);
+            }
+        } catch (IOException e) {
+            CCT_Resource_API.LOGGER.error("Failed to read audio data", e);
+        }
+
+        return byteStream;
     }
 }

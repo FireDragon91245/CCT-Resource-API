@@ -7,8 +7,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.server.ServerLifecycleHooks;
 import org.firedragon91245.cctresourceapi.Util;
 
 import java.util.*;
@@ -48,7 +46,7 @@ public class ResourceFiltering {
                         .map(Ingredient::getItems)
                         .flatMap(Arrays::stream)
                         .map(ItemStack::getItem)
-                        .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")).toString())
+                        .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                         .allMatch(str -> str.equals(ingredientsId));
             };
         }
@@ -92,7 +90,7 @@ public class ResourceFiltering {
                 Pattern itemidRegex = Pattern.compile(itemid);
 
                 int ingredientCount = countIngredientsFiltered(ingredients, item -> {
-                    ResourceLocation resourceLocation = Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation(""));
+                    ResourceLocation resourceLocation = Util.defaultIfNull(item.getRegistryName(), new ResourceLocation(""));
                     return modidRegex.matcher(resourceLocation.getNamespace()).matches() && itemidRegex.matcher(resourceLocation.getPath()).matches();
                 });
 
@@ -123,7 +121,7 @@ public class ResourceFiltering {
                         return false;
                     boolean allMatch = Arrays.stream(ingredient.getItems())
                             .map(ItemStack::getItem)
-                            .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")).toString())
+                            .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                             .allMatch(str -> str.equals(filter));
                     if(!allMatch)
                         return false;
@@ -166,7 +164,7 @@ public class ResourceFiltering {
 
             boolean allMatch = Arrays.stream(ingredient.getItems())
                     .map(ItemStack::getItem)
-                    .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")).toString())
+                    .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                     .allMatch(str -> modidRegex.matcher(str).matches() && itemidRegex.matcher(str).matches());
             if(!allMatch)
                 return false;
@@ -183,7 +181,7 @@ public class ResourceFiltering {
 
                 int ingredientCount = Arrays.stream(ingredient.getItems())
                         .filter(item -> {
-                            ResourceLocation resourceLocation = Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item.getItem()), new ResourceLocation(""));
+                            ResourceLocation resourceLocation = Util.defaultIfNull(item.getItem().getRegistryName(), new ResourceLocation(""));
                             return modidRegex.matcher(resourceLocation.getNamespace()).matches() && itemidRegex.matcher(resourceLocation.getPath()).matches();
                         })
                         .map(ItemStack::getCount)
@@ -212,7 +210,7 @@ public class ResourceFiltering {
                     if(!match)
                         return false;
                 } else if (filterObj instanceof String) {
-                    boolean allMatch = Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(itemStack.getItem()), new ResourceLocation("")).toString().equals(filterObj);
+                    boolean allMatch = Util.defaultIfNull(itemStack.getItem().getRegistryName(), new ResourceLocation("")).toString().equals(filterObj);
                     if(!allMatch)
                         return false;
                 }
@@ -240,7 +238,7 @@ public class ResourceFiltering {
             Pattern modidRegex = Pattern.compile(modid);
             Pattern itemidRegex = Pattern.compile(itemid);
 
-            String itemStackId = Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(itemStack.getItem()), new ResourceLocation("")).toString();
+            String itemStackId = Util.defaultIfNull(itemStack.getItem().getRegistryName(), new ResourceLocation("")).toString();
             if(!modidRegex.matcher(itemStackId).matches() || !itemidRegex.matcher(itemStackId).matches())
                 return false;
         }
@@ -425,7 +423,7 @@ public class ResourceFiltering {
                 .map(Ingredient::getItems)
                 .flatMap(Arrays::stream)
                 .map(ItemStack::getItem)
-                .map(item -> Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(item), new ResourceLocation("")))
+                .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")))
                 .allMatch(resourceLocation ->
                         modidRegex.matcher(resourceLocation.getNamespace()).matches() && itemidRegex.matcher(resourceLocation.getPath()).matches());
     }
@@ -447,11 +445,11 @@ public class ResourceFiltering {
         if(resultFilter instanceof String resultId)
         {
             ResourceLocation resultLocation = new ResourceLocation(resultId);
-            return recipe -> Objects.equals(ForgeRegistries.ITEMS.getKey(recipe.getResultItem(ServerLifecycleHooks.getCurrentServer().registryAccess()).getItem()), resultLocation);
+            return recipe -> Objects.equals(recipe.getResultItem().getItem().getRegistryName(), resultLocation);
         } else if (resultFilter instanceof Map) {
             Map<Object, Object> resultFilterMap = (Map<Object, Object>) resultFilter;
 
-            return recipe -> matchItemStack(recipe.getResultItem(ServerLifecycleHooks.getCurrentServer().registryAccess()), resultFilterMap);
+            return recipe -> matchItemStack(recipe.getResultItem(), resultFilterMap);
         }
         return recipe -> true;
     }

@@ -1,7 +1,6 @@
 package org.firedragon91245.cctresourceapi.cct;
 
 import dan200.computercraft.api.lua.*;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -267,8 +266,7 @@ public class ResourceAPI implements ILuaAPI {
         recipeMap.put("type", recipe.getType().toString());
         recipeMap.put("group", recipe.getGroup());
         recipeMap.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
-        RegistryAccess registryAccess = ServerLifecycleHooks.getCurrentServer().registryAccess();
-        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem(registryAccess)));
+        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem()));
         return recipeMap;
     }
 
@@ -277,7 +275,7 @@ public class ResourceAPI implements ILuaAPI {
             return null;
 
         Map<String, Object> blockInfo = new HashMap<>();
-        blockInfo.put("blockid", Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(block), new ResourceLocation("")).toString());
+        blockInfo.put("blockid", Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString());
         if (flags.contains("t")) { // t = tags
             ITagManager<Block> tags = ForgeRegistries.BLOCKS.tags();
             if(tags == null)
@@ -394,7 +392,7 @@ public class ResourceAPI implements ILuaAPI {
             AtomicInteger index = new AtomicInteger(1);
             itemInfo.put("enchantments", ForgeRegistries.ENCHANTMENTS.getValues().stream()
                     .filter(enchantment -> enchantment.canEnchant(new ItemStack(item)) || item.canApplyAtEnchantingTable(new ItemStack(item), enchantment))
-                    .map(enchantment -> Util.defaultIfNull(ForgeRegistries.ENCHANTMENTS.getKey(enchantment), new ResourceLocation("")).toString())
+                    .map(enchantment -> Util.defaultIfNull(enchantment.getRegistryName(), new ResourceLocation("")).toString())
                     .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry)));
         }
         return itemInfo;
@@ -458,7 +456,7 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> armorItemAsHashMap(ArmorItem armorItem) {
         Map<String, Object> result = new HashMap<>();
-        result.put("slot", armorItem.getEquipmentSlot().getName());
+        result.put("slot", armorItem.getSlot().getName());
         result.put("defense", armorItem.getDefense());
         result.put("toughness", armorItem.getToughness());
         result.put("material", armorMaterialAsHashMap(armorItem.getMaterial()));
@@ -651,7 +649,7 @@ public class ResourceAPI implements ILuaAPI {
 
             AtomicInteger index = new AtomicInteger(1);
             return ForgeRegistries.ITEMS.getValues().stream()
-                    .filter(it -> ResourceFiltering.filterIds(Util.defaultIfNull(ForgeRegistries.ITEMS.getKey(it), new ResourceLocation("")).toString(), modidRegex, itemidRegex))
+                    .filter(it -> ResourceFiltering.filterIds(Util.defaultIfNull(it.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, itemidRegex))
                     .map(it -> createItemInfoTable(it, flags))
                     .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
         } else {
@@ -689,12 +687,17 @@ public class ResourceAPI implements ILuaAPI {
 
         } else if (filter == null) {
             return ForgeRegistries.BLOCKS.getValues().stream()
-                    .map(block -> Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(block), new ResourceLocation("")).toString())
+                    .map(block -> Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> !str.isEmpty())
                     .toArray(String[]::new);
         } else {
             throw new LuaException("Filter is not nil, string or table!");
         }
+
+        return ForgeRegistries.BLOCKS.getValues().stream()
+                .map(block -> Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(block), new ResourceLocation("")).toString())
+                .filter(str -> !str.isEmpty())
+                .toArray(String[]::new);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -752,7 +755,7 @@ public class ResourceAPI implements ILuaAPI {
 
             AtomicInteger index = new AtomicInteger(1);
             return ForgeRegistries.BLOCKS.getValues().stream()
-                    .filter(b -> ResourceFiltering.filterIds(Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(b), new ResourceLocation("")).toString(), modidRegex, blockidRegex))
+                    .filter(b -> ResourceFiltering.filterIds(Util.defaultIfNull(b.getRegistryName(), new ResourceLocation("")).toString(), modidRegex, blockidRegex))
                     .map(b -> createBlockInfoTable(flags, b))
                     .collect(Collectors.toMap(entry -> index.getAndIncrement(), entry -> entry));
         } else {
@@ -786,7 +789,7 @@ public class ResourceAPI implements ILuaAPI {
             Pattern blockidRegex = Pattern.compile(blockid);
 
             String blockId = ForgeRegistries.BLOCKS.getValues().stream()
-                    .map(b -> Util.defaultIfNull(ForgeRegistries.BLOCKS.getKey(b), new ResourceLocation("")).toString())
+                    .map(b -> Util.defaultIfNull(b.getRegistryName(), new ResourceLocation("")).toString())
                     .filter(str -> ResourceFiltering.filterIds(str, modidRegex, blockidRegex))
                     .findFirst().orElse(null);
 
