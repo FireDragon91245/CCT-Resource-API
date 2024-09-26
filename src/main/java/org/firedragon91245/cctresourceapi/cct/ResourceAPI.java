@@ -276,7 +276,7 @@ public class ResourceAPI implements ILuaAPI {
         recipeMap.put("type", recipe.getType().toString());
         recipeMap.put("group", recipe.getGroup());
         recipeMap.put("ingredients", ingredientsAsHashMap(recipe.getIngredients()));
-        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem(ServerLifecycleHooks.getCurrentServer().registryAccess())));
+        recipeMap.put("result", itemStackAsHashMap(recipe.getResultItem()));
         return recipeMap;
     }
 
@@ -462,7 +462,7 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> armorItemAsHashMap(ArmorItem armorItem) {
         Map<String, Object> result = new HashMap<>();
-        result.put("slot", armorItem.getEquipmentSlot().getName());
+        result.put("slot", armorItem.getSlot().getName());
         result.put("defense", armorItem.getDefense());
         result.put("toughness", armorItem.getToughness());
         result.put("material", armorMaterialAsHashMap(armorItem.getMaterial()));

@@ -391,11 +391,11 @@ public class ResourceFiltering {
         Object resultFilter = filterMap.get("result");
         if (resultFilter instanceof String resultId) {
             ResourceLocation resultLocation = new ResourceLocation(resultId);
-            return recipe -> Objects.equals(ForgeRegistries.ITEMS.getKey(recipe.getResultItem(ServerLifecycleHooks.getCurrentServer().registryAccess()).getItem()), resultLocation);
+            return recipe -> Objects.equals(ForgeRegistries.ITEMS.getKey(recipe.getResultItem().getItem()), resultLocation);
         } else if (resultFilter instanceof Map) {
             Map<Object, Object> resultFilterMap = (Map<Object, Object>) resultFilter;
 
-            return recipe -> matchItemStack(recipe.getResultItem(ServerLifecycleHooks.getCurrentServer().registryAccess()), resultFilterMap);
+            return recipe -> matchItemStack(recipe.getResultItem(), resultFilterMap);
         }
         return recipe -> true;
     }

@@ -9,7 +9,7 @@ import org.firedragon91245.cctresourceapi.cct.ResourceAPI;
 import org.firedragon91245.cctresourceapi.entity.BlockStateModel;
 import org.firedragon91245.cctresourceapi.entity.BlockStateModelVariant;
 import org.firedragon91245.cctresourceapi.json.*;
-import org.joml.Vector3f;
+import com.mojang.math.Vector3f;
 import org.slf4j.Logger;
 
 @Mod("cct_resource_api")
