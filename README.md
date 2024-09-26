@@ -3,6 +3,11 @@
 This project aims to add a simple but very flexible API to CC:Tweaked that allows access to resources via the Lua API.  
 The API is "read-only"—you can only retrieve information, but you can't modify it.
 
+# Legal Notice
+- The Minecraft EULA applies: [DE](https://www.minecraft.net/de-de/terms/r2) | [EN](https://www.minecraft.net/en-us/terms/r2).
+- Any content under the folder [src/main/resources/bundled_resources/minecraft](https://github.com/FireDragon91245/CCT-Resource-API/tree/master/src/main/resources/bundled_resources/minecraft) belongs to Microsoft (Mojang) and is used under the constraints of section 1, "ONE MAJOR RULE," and section 4, "MINECRAFT: JAVA EDITION" of the EULA.
+- The license of this project ONLY applies to content outside of the `src/main/resources/bundled_resources/minecraft` directory.  
+  
 > [!CAUTION]
 > v1.1 1.18.2 & 1.19.4 releases hava a major flaw  
 > **These releases have a major flaw and do not have the correct version vanilla resourcepack bundled  
