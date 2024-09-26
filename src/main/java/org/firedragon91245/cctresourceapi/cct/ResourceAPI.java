@@ -83,10 +83,6 @@ public class ResourceAPI implements ILuaAPI {
 
     private final List<Closeable> toClose = new LinkedList<>();
 
-    public void addStreamToClose(Closeable stream) {
-        toClose.add(stream);
-    }
-
     private static HashMap<String, Object> ingredientAsHashMap(Ingredient ingredient) {
         HashMap<String, Object> ingredientInfo = new HashMap<>();
         ingredientInfo.put("empty", ingredient.isEmpty());
@@ -301,6 +297,10 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return blockInfo;
+    }
+
+    public void addStreamToClose(Closeable stream) {
+        toClose.add(stream);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -1160,8 +1160,7 @@ public class ResourceAPI implements ILuaAPI {
 
     @Override
     public void shutdown() {
-        for(Closeable closeable : toClose)
-        {
+        for (Closeable closeable : toClose) {
             try {
                 closeable.close();
             } catch (IOException ignored) {

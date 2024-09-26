@@ -11,8 +11,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class LuaByteStream implements Closeable {
-    private InputStream baseInStream;
     protected boolean closed = false;
+    private InputStream baseInStream;
 
     public LuaByteStream(InputStream baseStream) {
         this.baseInStream = baseStream;
@@ -65,7 +65,7 @@ public class LuaByteStream implements Closeable {
 
     @Override
     public void close() throws IOException {
-        if(!closed) {
+        if (!closed) {
             baseInStream.close();
             closed = true;
         }
@@ -73,7 +73,7 @@ public class LuaByteStream implements Closeable {
 
     @LuaFunction
     final public void close(Object ignored) throws LuaException {
-        if(!closed) {
+        if (!closed) {
             closeImpl();
             closed = true;
         }

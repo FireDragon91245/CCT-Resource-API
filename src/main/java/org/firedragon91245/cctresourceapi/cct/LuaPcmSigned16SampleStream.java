@@ -50,8 +50,7 @@ public class LuaPcmSigned16SampleStream extends LuaByteStream {
 
     @Override
     public void close() throws IOException {
-        if(!closed)
-        {
+        if (!closed) {
             if (useConversionStream && convertedAudioStream != null) {
                 convertedAudioStream.close();
             }

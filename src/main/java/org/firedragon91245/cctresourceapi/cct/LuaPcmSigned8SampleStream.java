@@ -18,8 +18,7 @@ public class LuaPcmSigned8SampleStream extends LuaPcmSigned16SampleStream {
 
     @Override
     public void close() throws IOException {
-        if(!closed)
-        {
+        if (!closed) {
             baseResampleStream.close();
             closed = true;
         }
