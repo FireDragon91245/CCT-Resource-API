@@ -26,6 +26,7 @@ public class LuaByteStream implements Closeable {
         this.baseInStream = baseInStream;
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public Double read() throws LuaException {
         try {
@@ -39,6 +40,7 @@ public class LuaByteStream implements Closeable {
         }
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public MethodResult read(int count) throws LuaException {
         if (count < 0) {

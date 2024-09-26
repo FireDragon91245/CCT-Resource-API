@@ -19,11 +19,13 @@ public class LuaSoundStreamProvider {
         this.apiInstance = apiInstance;
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public String getSoundLocation() {
         return audioLocation;
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public LuaByteStream createByteStream() {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
@@ -34,6 +36,7 @@ public class LuaSoundStreamProvider {
         return luaByteStream;
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public LuaPcmSigned16SampleStream createPcmSigned16SampleStream() throws LuaException {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
@@ -44,6 +47,7 @@ public class LuaSoundStreamProvider {
         return luaPcmSigned16SampleStream;
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public LuaPcmSigned8SampleStream createPcmSigned8SampleStream() throws LuaException {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
@@ -54,6 +58,7 @@ public class LuaSoundStreamProvider {
         return luaPcmSigned8SampleStream;
     }
 
+    @SuppressWarnings("unused")
     @LuaFunction
     final public Map<String, Object> getSoundInfo() throws LuaException {
         try (AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation)) {
