@@ -18,41 +18,34 @@ public class CustomizedAudioSystemFactory {
         conversions = new ArrayList<>();
     }
 
-    public static CustomizedAudioSystemFactory empty()
-    {
+    public static CustomizedAudioSystemFactory empty() {
         return new CustomizedAudioSystemFactory();
     }
 
-    public CustomizedAudioSystemFactory withProvidersFromClassLoader(final ClassLoader loader)
-    {
+    public CustomizedAudioSystemFactory withProvidersFromClassLoader(final ClassLoader loader) {
         loaders.add(loader);
         return this;
     }
 
-    public CustomizedAudioSystemFactory withAudioFileReader(final AudioFileReader reader)
-    {
+    public CustomizedAudioSystemFactory withAudioFileReader(final AudioFileReader reader) {
         readers.add(reader);
         return this;
     }
 
-    public CustomizedAudioSystemFactory withAudioConversionProvider(final FormatConversionProvider conversion)
-    {
+    public CustomizedAudioSystemFactory withAudioConversionProvider(final FormatConversionProvider conversion) {
         conversions.add(conversion);
         return this;
     }
 
-    public CustomizedAudioSystemFactory useCustomizedBaseAudioSystem(final CustomizedAudioSystem base)
-    {
-        if(this.baseAudioSystem != null)
-        {
+    public CustomizedAudioSystemFactory useCustomizedBaseAudioSystem(final CustomizedAudioSystem base) {
+        if (this.baseAudioSystem != null) {
             throw new IllegalStateException("Base audio system is already set");
         }
         this.baseAudioSystem = base;
         return this;
     }
 
-    public CustomizedAudioSystem build()
-    {
+    public CustomizedAudioSystem build() {
         return new CustomizedAudioSystem(loaders, readers, conversions, baseAudioSystem);
     }
 }

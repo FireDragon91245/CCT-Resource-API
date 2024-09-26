@@ -8,7 +8,7 @@ import java.lang.reflect.Type;
 public class BlockStateModelVariantSerializer implements JsonSerializer<BlockStateModelVariant>, JsonDeserializer<BlockStateModelVariant> {
     @Override
     public BlockStateModelVariant deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-        if(!jsonElement.isJsonObject()) {
+        if (!jsonElement.isJsonObject()) {
             throw new JsonParseException("BlockStateModelVariant must be a JsonObject");
         }
 

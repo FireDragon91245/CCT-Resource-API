@@ -9,11 +9,11 @@ import java.util.stream.Collectors;
 
 public class BlockStateModel {
 
+    final public Map<String, OneOrMore<BlockStateModelVariant>> variants;
+
     public BlockStateModel() {
         this.variants = new HashMap<>();
     }
-
-    final public Map<String, OneOrMore<BlockStateModelVariant>> variants;
 
     public HashMap<String, Object> asHashMap() {
         HashMap<String, Object> result = new HashMap<>();

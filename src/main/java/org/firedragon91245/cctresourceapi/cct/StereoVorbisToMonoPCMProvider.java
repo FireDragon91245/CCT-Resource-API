@@ -5,7 +5,6 @@ import org.firedragon91245.cctresourceapi.CCT_Resource_API;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.IOException;
 

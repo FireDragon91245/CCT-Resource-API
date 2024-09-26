@@ -4,15 +4,11 @@ import dan200.computercraft.api.lua.LuaException;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import java.io.IOException;
 
 public class LuaPcmSigned16SampleStream extends LuaByteStream {
 
-    private boolean useConversionStream;
     private final AudioInputStream baseAudioStream;
-    private AudioInputStream convertedAudioStream;
-
     private final AudioFormat TARGET_FORMAT = new AudioFormat(
             AudioFormat.Encoding.PCM_SIGNED, // Encoding
             48000,                           // Sample rate
@@ -22,31 +18,28 @@ public class LuaPcmSigned16SampleStream extends LuaByteStream {
             48000,                           // Frame rate
             false                            // Little endian
     );
+    private boolean useConversionStream;
+    private AudioInputStream convertedAudioStream;
 
     public LuaPcmSigned16SampleStream(AudioInputStream baseStream, boolean keepSuperByteStreamUninitialized) throws LuaException {
         super();
         this.baseAudioStream = baseStream;
 
-        if(needsConversion())
-        {
+        if (needsConversion()) {
             useConversionStream = true;
 
-            if(ResourceLoading.AUDIO_SYSTEM.isConversionSupported(TARGET_FORMAT, baseStream.getFormat()))
-            {
+            if (ResourceLoading.AUDIO_SYSTEM.isConversionSupported(TARGET_FORMAT, baseStream.getFormat())) {
                 convertedAudioStream = ResourceLoading.AUDIO_SYSTEM.getAudioInputStream(TARGET_FORMAT, baseStream);
-            }
-            else
-            {
+            } else {
                 throw new LuaException("Unsupported audio format");
             }
         }
 
-        if(!keepSuperByteStreamUninitialized)
+        if (!keepSuperByteStreamUninitialized)
             super.setBaseInStream(useConversionStream ? convertedAudioStream : baseStream);
     }
 
-    private boolean needsConversion()
-    {
+    private boolean needsConversion() {
         AudioFormat format = baseAudioStream.getFormat();
         return !TARGET_FORMAT.matches(format);
     }
@@ -57,8 +50,7 @@ public class LuaPcmSigned16SampleStream extends LuaByteStream {
 
     @Override
     public void close() throws IOException {
-        if(!closed)
-        {
+        if (!closed) {
             if (useConversionStream && convertedAudioStream != null) {
                 convertedAudioStream.close();
             }

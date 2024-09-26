@@ -8,8 +8,7 @@ import java.lang.reflect.Type;
 public class Vector3fSerializer implements JsonSerializer<Vector3f>, JsonDeserializer<Vector3f> {
     @Override
     public Vector3f deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-        if(jsonElement.isJsonObject())
-        {
+        if (jsonElement.isJsonObject()) {
             JsonObject jsonObject = jsonElement.getAsJsonObject();
             float x = jsonObject.get("x").getAsFloat();
             float y = jsonObject.get("y").getAsFloat();
@@ -21,8 +20,7 @@ public class Vector3fSerializer implements JsonSerializer<Vector3f>, JsonDeseria
             float y = array.get(1).getAsFloat();
             float z = array.get(2).getAsFloat();
             return new Vector3f(x, y, z);
-        }
-        else {
+        } else {
             throw new JsonParseException("Invalid Vector3f format");
         }
     }

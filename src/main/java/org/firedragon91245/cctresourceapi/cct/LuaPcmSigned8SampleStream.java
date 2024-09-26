@@ -5,7 +5,7 @@ import dan200.computercraft.api.lua.LuaException;
 import javax.sound.sampled.AudioInputStream;
 import java.io.IOException;
 
-public class LuaPcmSigned8SampleStream extends LuaPcmSigned16SampleStream{
+public class LuaPcmSigned8SampleStream extends LuaPcmSigned16SampleStream {
 
     PcmSigned16To8ResampleStream baseResampleStream;
 
@@ -18,8 +18,7 @@ public class LuaPcmSigned8SampleStream extends LuaPcmSigned16SampleStream{
 
     @Override
     public void close() throws IOException {
-        if(!closed)
-        {
+        if (!closed) {
             baseResampleStream.close();
             closed = true;
         }

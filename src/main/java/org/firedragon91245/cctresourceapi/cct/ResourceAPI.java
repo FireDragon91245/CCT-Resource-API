@@ -83,10 +83,6 @@ public class ResourceAPI implements ILuaAPI {
 
     private final List<Closeable> toClose = new LinkedList<>();
 
-    public void addStreamToClose(Closeable stream) {
-        toClose.add(stream);
-    }
-
     private static HashMap<String, Object> ingredientAsHashMap(Ingredient ingredient) {
         HashMap<String, Object> ingredientInfo = new HashMap<>();
         ingredientInfo.put("empty", ingredient.isEmpty());
@@ -292,7 +288,7 @@ public class ResourceAPI implements ILuaAPI {
         blockInfo.put("blockid", Util.defaultIfNull(block.getRegistryName(), new ResourceLocation("")).toString());
         if (flags.contains("t")) { // t = tags
             ITagManager<Block> tags = ForgeRegistries.BLOCKS.tags();
-            if(tags == null)
+            if (tags == null)
                 return null;
             blockInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(block)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
@@ -301,6 +297,10 @@ public class ResourceAPI implements ILuaAPI {
         }
 
         return blockInfo;
+    }
+
+    public void addStreamToClose(Closeable stream) {
+        toClose.add(stream);
     }
 
     @SuppressWarnings({"unchecked", "unused"})
@@ -388,7 +388,7 @@ public class ResourceAPI implements ILuaAPI {
         if (flags.contains("t")) // t = tags
         {
             ITagManager<Item> tags = ForgeRegistries.ITEMS.tags();
-            if(tags == null)
+            if (tags == null)
                 return null;
             itemInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(item)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
@@ -418,8 +418,7 @@ public class ResourceAPI implements ILuaAPI {
         itemInfo.put("foodItem", item.isEdible());
         itemInfo.put("rarity", item.getRarity(new ItemStack(item)).toString());
 
-        if(item.isEdible())
-        {
+        if (item.isEdible()) {
             itemInfo.put("food", foodAsHashMap(item.getFoodProperties(new ItemStack(item), null)));
         }
 
@@ -431,20 +430,16 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> toolAsHashMap(Item item) {
         Map<String, Object> result = new HashMap<>();
-        if(item instanceof TieredItem tieredItem)
-        {
+        if (item instanceof TieredItem tieredItem) {
             result.put("tier", tieredItemAsHashMap(tieredItem));
         }
-        if(item instanceof ArmorItem armorItem)
-        {
+        if (item instanceof ArmorItem armorItem) {
             result.put("armor", armorItemAsHashMap(armorItem));
         }
-        if(item instanceof DiggerItem diggerItem)
-        {
+        if (item instanceof DiggerItem diggerItem) {
             result.put("tool", toolItemAsHashMap(diggerItem));
         }
-        if(item instanceof BowItem bowItem)
-        {
+        if (item instanceof BowItem bowItem) {
             result.put("bow", bowItemAsHashMap(bowItem));
         }
 
@@ -499,7 +494,7 @@ public class ResourceAPI implements ILuaAPI {
 
     private Map<String, Object> foodAsHashMap(@Nullable FoodProperties food) {
         Map<String, Object> result = new HashMap<>();
-        if(food == null)
+        if (food == null)
             return result;
         result.put("nutrition", food.getNutrition());
         result.put("saturation", food.getSaturationModifier());
@@ -912,7 +907,7 @@ public class ResourceAPI implements ILuaAPI {
         enchantmentInfo.put("enchantmentid", Objects.requireNonNull(enchantment.getRegistryName()).toString());
         if (flags.contains("t")) {
             ITagManager<Enchantment> tags = ForgeRegistries.ENCHANTMENTS.tags();
-            if(tags == null)
+            if (tags == null)
                 return null;
             enchantmentInfo.put("tags", tags.stream().filter(iTag -> iTag.contains(enchantment)).map(ITag::getKey).map(TagKey::location).map(ResourceLocation::toString).toArray(String[]::new));
         }
@@ -1038,7 +1033,7 @@ public class ResourceAPI implements ILuaAPI {
                     .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().asHashMap()))
                     .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
         }
-        if(flags.contains("s")) // stream
+        if (flags.contains("s")) // stream
         {
             if (info == null)
                 info = ResourceLoading.getSoundInfo(soundEvent);
@@ -1118,8 +1113,7 @@ public class ResourceAPI implements ILuaAPI {
 
     @SuppressWarnings({"unused", "unchecked"})
     @LuaFunction
-    final public Map<Integer, Map<String, Object>> getSoundInfos(Object filter, String flags)
-    {
+    final public Map<Integer, Map<String, Object>> getSoundInfos(Object filter, String flags) {
         if (filter instanceof Map) {
             Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 
@@ -1165,8 +1159,7 @@ public class ResourceAPI implements ILuaAPI {
 
     @Override
     public void shutdown() {
-        for(Closeable closeable : toClose)
-        {
+        for (Closeable closeable : toClose) {
             try {
                 closeable.close();
             } catch (IOException ignored) {
