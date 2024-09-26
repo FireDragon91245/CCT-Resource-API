@@ -8,17 +8,15 @@ import java.io.InputStream;
 
 public class PcmSigned16To8ResampleStream extends InputStream {
 
+    private static final int DEFAULT_INPUT_BUFFER_SIZE = 4096;
     private final AudioInputStream basePcm16Stream;
     private final int numChannels;
     private final boolean isBigEndian;
     private final int frameSize;
-
     private final byte[] inputBuffer;
     private final byte[] outputBuffer;
     private int bufferPos;
     private int bufferLimit;
-
-    private static final int DEFAULT_INPUT_BUFFER_SIZE = 4096;
 
     public PcmSigned16To8ResampleStream(AudioInputStream basePcm16Stream) {
         if (basePcm16Stream == null) {

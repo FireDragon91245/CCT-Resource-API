@@ -11,10 +11,8 @@ import java.util.concurrent.atomic.AtomicReference;
 public class OneOrMoreSerializer implements JsonDeserializer<OneOrMore<?>>, JsonSerializer<OneOrMore<?>> {
     @Override
     public OneOrMore<?> deserialize(JsonElement jsonElement, Type type, JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
-        if(jsonElement.isJsonArray())
-        {
-            if(type instanceof ParameterizedType)
-            {
+        if (jsonElement.isJsonArray()) {
+            if (type instanceof ParameterizedType) {
                 ParameterizedType genericType = (ParameterizedType) type;
                 Object result = jsonDeserializationContext.deserialize(jsonElement, new ParameterizedType() {
                     @Override
@@ -32,8 +30,7 @@ public class OneOrMoreSerializer implements JsonDeserializer<OneOrMore<?>>, Json
                         return null;
                     }
                 });
-                if(result instanceof List)
-                {
+                if (result instanceof List) {
                     List<?> list = (List<?>) result;
                     return OneOrMore.fromMore(list);
                 }

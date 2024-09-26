@@ -1022,7 +1022,7 @@ public class ResourceAPI implements ILuaAPI {
                     .map(entry -> new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().asHashMap()))
                     .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue)));
         }
-        if(flags.contains("s")) // stream
+        if (flags.contains("s")) // stream
         {
             if (info == null)
                 info = ResourceLoading.getSoundInfo(soundEvent);
@@ -1102,8 +1102,7 @@ public class ResourceAPI implements ILuaAPI {
 
     @SuppressWarnings({"unused", "unchecked"})
     @LuaFunction
-    final public Map<Integer, Map<String, Object>> getSoundInfos(Object filter, String flags)
-    {
+    final public Map<Integer, Map<String, Object>> getSoundInfos(Object filter, String flags) {
         if (filter instanceof Map) {
             Map<Object, Object> filterMap = (Map<Object, Object>) filter;
 

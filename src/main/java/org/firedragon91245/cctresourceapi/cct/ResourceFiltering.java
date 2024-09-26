@@ -31,12 +31,11 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     protected static Predicate<IRecipe<?>> assembleRecipeIngredientFilter(Map<Object, Object> filterMap) {
-        if(!filterMap.containsKey("ingredients"))
+        if (!filterMap.containsKey("ingredients"))
             return recipe -> true;
 
         Object ingredientsFilter = filterMap.get("ingredients");
-        if(ingredientsFilter instanceof Map)
-        {
+        if (ingredientsFilter instanceof Map) {
             Map<Object, Object> ingredientsFilterMap = (Map<Object, Object>) ingredientsFilter;
             return recipe -> matchIngredients(recipe.getIngredients(), ingredientsFilterMap);
         } else if (ingredientsFilter instanceof String) {
@@ -57,19 +56,17 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     private static boolean matchIngredients(NonNullList<Ingredient> ingredients, Map<Object, Object> ingredientsFilterMap) {
-        if(ingredientsFilterMap.containsKey("count"))
-        {
+        if (ingredientsFilterMap.containsKey("count")) {
             Integer count = Util.objectToInt(ingredientsFilterMap.get("count"));
-            if(count == null)
+            if (count == null)
                 return false;
 
             int ingredientCount = countIngredients(ingredients);
 
-            if(ingredientCount != count)
+            if (ingredientCount != count)
                 return false;
         }
-        if(ingredientsFilterMap.containsKey("itemid") || ingredientsFilterMap.containsKey("modid"))
-        {
+        if (ingredientsFilterMap.containsKey("itemid") || ingredientsFilterMap.containsKey("modid")) {
             String modid = (String) ingredientsFilterMap.getOrDefault("modid", ".*");
             String itemid = (String) ingredientsFilterMap.getOrDefault("itemid", ".*");
 
@@ -77,11 +74,11 @@ public class ResourceFiltering {
             Pattern itemidRegex = Pattern.compile(itemid);
 
             boolean allMatch = matchIngedients(ingredients, modidRegex, itemidRegex);
-            if(!allMatch)
+            if (!allMatch)
                 return false;
         }
         Map<String, Integer> specificItemCounts = filterSpecificItemFilters(ingredientsFilterMap);
-        if(!specificItemCounts.isEmpty()){
+        if (!specificItemCounts.isEmpty()) {
             for (Map.Entry<String, Integer> entry : specificItemCounts.entrySet()) {
                 String[] parts = entry.getKey().split(":");
                 String modid = parts[0];
@@ -95,36 +92,34 @@ public class ResourceFiltering {
                     return modidRegex.matcher(resourceLocation.getNamespace()).matches() && itemidRegex.matcher(resourceLocation.getPath()).matches();
                 });
 
-                if(ingredientCount != entry.getValue())
+                if (ingredientCount != entry.getValue())
                     return false;
             }
         }
         Map<Integer, Object> ingredientFilters = ingredientsFilterMap.entrySet().stream()
                 .filter(entry -> Util.objectToInt(entry.getKey()) != null)
                 .collect(Collectors.toMap(entry -> Util.objectToInt(entry.getKey()), Map.Entry::getValue));
-        if(!ingredientFilters.isEmpty())
-        {
+        if (!ingredientFilters.isEmpty()) {
             for (Map.Entry<Integer, Object> entry : ingredientFilters.entrySet()) {
                 int index = entry.getKey();
                 Object filter = entry.getValue();
 
-                if(filter instanceof Map)
-                {
+                if (filter instanceof Map) {
                     Ingredient ingredient = Util.safeGetIndex(ingredients, index - 1);
-                    if(ingredient == null)
+                    if (ingredient == null)
                         return false;
                     boolean match = matchIngredient(ingredient, (Map<Object, Object>) filter);
-                    if(!match)
+                    if (!match)
                         return false;
                 } else if (filter instanceof String) {
                     Ingredient ingredient = Util.safeGetIndex(ingredients, index - 1);
-                    if(ingredient == null)
+                    if (ingredient == null)
                         return false;
                     boolean allMatch = Arrays.stream(ingredient.getItems())
                             .map(ItemStack::getItem)
                             .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                             .allMatch(str -> str.equals(filter));
-                    if(!allMatch)
+                    if (!allMatch)
                         return false;
                 }
             }
@@ -142,21 +137,19 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     private static boolean matchIngredient(Ingredient ingredient, Map<Object, Object> filter) {
-        if(filter.containsKey("count"))
-        {
+        if (filter.containsKey("count")) {
             Integer count = Util.objectToInt(filter.get("count"));
-            if(count == null)
+            if (count == null)
                 return false;
 
             int ingredientCount = Arrays.stream(ingredient.getItems())
                     .map(ItemStack::getCount)
                     .reduce(0, Integer::sum);
 
-            if(ingredientCount != count)
+            if (ingredientCount != count)
                 return false;
         }
-        if(filter.containsKey("itemid") || filter.containsKey("modid"))
-        {
+        if (filter.containsKey("itemid") || filter.containsKey("modid")) {
             String modid = (String) filter.getOrDefault("modid", ".*");
             String itemid = (String) filter.getOrDefault("itemid", ".*");
 
@@ -167,11 +160,11 @@ public class ResourceFiltering {
                     .map(ItemStack::getItem)
                     .map(item -> Util.defaultIfNull(item.getRegistryName(), new ResourceLocation("")).toString())
                     .allMatch(str -> modidRegex.matcher(str).matches() && itemidRegex.matcher(str).matches());
-            if(!allMatch)
+            if (!allMatch)
                 return false;
         }
         Map<String, Integer> specificItemCounts = filterSpecificItemFilters(filter);
-        if(!specificItemCounts.isEmpty()){
+        if (!specificItemCounts.isEmpty()) {
             for (Map.Entry<String, Integer> entry : specificItemCounts.entrySet()) {
                 String[] parts = entry.getKey().split(":");
                 String modid = parts[0];
@@ -188,31 +181,29 @@ public class ResourceFiltering {
                         .map(ItemStack::getCount)
                         .reduce(0, Integer::sum);
 
-                if(ingredientCount != entry.getValue())
+                if (ingredientCount != entry.getValue())
                     return false;
             }
         }
         Map<Integer, Object> itemStackFilters = filter.entrySet().stream()
                 .filter(entry -> Util.objectToInt(entry.getKey()) != null)
                 .collect(Collectors.toMap(entry -> Util.objectToInt(entry.getKey()), Map.Entry::getValue));
-        if(!itemStackFilters.isEmpty())
-        {
+        if (!itemStackFilters.isEmpty()) {
             for (Map.Entry<Integer, Object> entry : itemStackFilters.entrySet()) {
                 int index = entry.getKey();
                 Object filterObj = entry.getValue();
 
                 ItemStack itemStack = Util.safeGetIndex(ingredient.getItems(), index - 1);
-                if(itemStack == null)
+                if (itemStack == null)
                     return false;
 
-                if(filterObj instanceof Map)
-                {
+                if (filterObj instanceof Map) {
                     boolean match = matchItemStack(itemStack, (Map<Object, Object>) filterObj);
-                    if(!match)
+                    if (!match)
                         return false;
                 } else if (filterObj instanceof String) {
                     boolean allMatch = Util.defaultIfNull(itemStack.getItem().getRegistryName(), new ResourceLocation("")).toString().equals(filterObj);
-                    if(!allMatch)
+                    if (!allMatch)
                         return false;
                 }
             }
@@ -222,17 +213,15 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     private static boolean matchItemStack(ItemStack itemStack, Map<Object, Object> filterObj) {
-        if(filterObj.containsKey("count"))
-        {
+        if (filterObj.containsKey("count")) {
             Integer count = Util.objectToInt(filterObj.get("count"));
-            if(count == null)
+            if (count == null)
                 return false;
 
-            if(itemStack.getCount() != count)
+            if (itemStack.getCount() != count)
                 return false;
         }
-        if(filterObj.containsKey("itemid") || filterObj.containsKey("modid"))
-        {
+        if (filterObj.containsKey("itemid") || filterObj.containsKey("modid")) {
             String modid = (String) filterObj.getOrDefault("modid", ".*");
             String itemid = (String) filterObj.getOrDefault("itemid", ".*");
 
@@ -240,18 +229,14 @@ public class ResourceFiltering {
             Pattern itemidRegex = Pattern.compile(itemid);
 
             String itemStackId = Util.defaultIfNull(itemStack.getItem().getRegistryName(), new ResourceLocation("")).toString();
-            if(!modidRegex.matcher(itemStackId).matches() || !itemidRegex.matcher(itemStackId).matches())
+            if (!modidRegex.matcher(itemStackId).matches() || !itemidRegex.matcher(itemStackId).matches())
                 return false;
         }
-        if(filterObj.containsKey("nbt"))
-        {
+        if (filterObj.containsKey("nbt")) {
             Object nbtObj = filterObj.get("nbt");
-            if(nbtObj instanceof Map)
-            {
+            if (nbtObj instanceof Map) {
                 return matchNBT(itemStack.getTag(), (Map<Object, Object>) nbtObj);
-            }
-            else
-            {
+            } else {
                 return false;
             }
         }
@@ -260,7 +245,7 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     private static boolean matchNBT(CompoundNBT tag, Map<Object, Object> nbtObj) {
-        if(tag == null)
+        if (tag == null)
             return false;
 
         for (Map.Entry<Object, Object> entry : nbtObj.entrySet()) {
@@ -268,78 +253,57 @@ public class ResourceFiltering {
             Object value = entry.getValue();
             INBT tagValue = tag.get(key);
 
-            if(value instanceof String)
-            {
-                if(!(tagValue instanceof StringNBT))
+            if (value instanceof String) {
+                if (!(tagValue instanceof StringNBT))
                     return false;
-                if(!tagValue.getAsString().equals(value))
+                if (!tagValue.getAsString().equals(value))
                     return false;
-            }
-            else if(value instanceof Integer)
-            {
-                if(!(tagValue instanceof IntNBT))
+            } else if (value instanceof Integer) {
+                if (!(tagValue instanceof IntNBT))
                     return false;
-                if(((IntNBT) tagValue).getAsInt() != (int) value)
+                if (((IntNBT) tagValue).getAsInt() != (int) value)
                     return false;
-            }
-            else if(value instanceof Double)
-            {
-                if(!(tagValue instanceof DoubleNBT))
+            } else if (value instanceof Double) {
+                if (!(tagValue instanceof DoubleNBT))
                     return false;
-                if(((DoubleNBT) tagValue).getAsDouble() != (double) value)
+                if (((DoubleNBT) tagValue).getAsDouble() != (double) value)
                     return false;
-            }
-            else if(value instanceof Float)
-            {
-                if(!(tagValue instanceof FloatNBT))
+            } else if (value instanceof Float) {
+                if (!(tagValue instanceof FloatNBT))
                     return false;
-                if(((FloatNBT) tagValue).getAsFloat() != (float) value)
+                if (((FloatNBT) tagValue).getAsFloat() != (float) value)
                     return false;
-            }
-            else if(value instanceof Long)
-            {
-                if(!(tagValue instanceof LongNBT))
+            } else if (value instanceof Long) {
+                if (!(tagValue instanceof LongNBT))
                     return false;
-                if(((LongNBT) tagValue).getAsLong() != (long) value)
+                if (((LongNBT) tagValue).getAsLong() != (long) value)
                     return false;
-            }
-            else if(value instanceof Byte)
-            {
-                if(!(tagValue instanceof ByteNBT))
+            } else if (value instanceof Byte) {
+                if (!(tagValue instanceof ByteNBT))
                     return false;
-                if(((ByteNBT) tagValue).getAsByte() != (byte) value)
+                if (((ByteNBT) tagValue).getAsByte() != (byte) value)
                     return false;
-            }
-            else if(value instanceof Short)
-            {
-                if(!(tagValue instanceof ShortNBT))
+            } else if (value instanceof Short) {
+                if (!(tagValue instanceof ShortNBT))
                     return false;
-                if(((ShortNBT) tagValue).getAsShort() != (short) value)
+                if (((ShortNBT) tagValue).getAsShort() != (short) value)
                     return false;
-            }
-            else if(value instanceof Boolean)
-            {
-                if(!(tagValue instanceof ByteNBT))
+            } else if (value instanceof Boolean) {
+                if (!(tagValue instanceof ByteNBT))
                     return false;
-                if(((ByteNBT) tagValue).getAsByte() == 1 != (boolean) value)
+                if (((ByteNBT) tagValue).getAsByte() == 1 != (boolean) value)
                     return false;
-            }
-            else if(value instanceof Map)
-            {
+            } else if (value instanceof Map) {
                 CompoundNBT tagCompound = tag.getCompound(key);
                 boolean nbtMatch = matchNBT(tagCompound, (Map<Object, Object>) value);
-                if(!nbtMatch)
+                if (!nbtMatch)
                     return false;
-            }
-            else if(value instanceof List)
-            {
+            } else if (value instanceof List) {
                 ListNBT tagList = tag.getList(key, 10);
                 boolean nbtMatch = matchListNBT(tagList, (List<Object>) value);
-                if(!nbtMatch)
+                if (!nbtMatch)
                     return false;
-            }
-            else
-            {
+            } else {
                 return false;
             }
         }
@@ -348,62 +312,43 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     private static boolean matchListNBT(ListNBT tagList, List<Object> value) {
-        if(tagList.size() != value.size())
+        if (tagList.size() != value.size())
             return false;
 
         for (int i = 0; i < tagList.size(); i++) {
             INBT tagElement = tagList.get(i);
             Object valueElement = value.get(i);
 
-            if(tagElement instanceof StringNBT && valueElement instanceof String)
-            {
-                if(!tagElement.getAsString().equals(valueElement))
+            if (tagElement instanceof StringNBT && valueElement instanceof String) {
+                if (!tagElement.getAsString().equals(valueElement))
                     return false;
-            }
-            else if(tagElement instanceof IntNBT && valueElement instanceof Integer)
-            {
-                if(((IntNBT) tagElement).getAsInt() != (int) valueElement)
+            } else if (tagElement instanceof IntNBT && valueElement instanceof Integer) {
+                if (((IntNBT) tagElement).getAsInt() != (int) valueElement)
                     return false;
-            }
-            else if(tagElement instanceof DoubleNBT && valueElement instanceof Double)
-            {
-                if(((DoubleNBT) tagElement).getAsDouble() != (double) valueElement)
+            } else if (tagElement instanceof DoubleNBT && valueElement instanceof Double) {
+                if (((DoubleNBT) tagElement).getAsDouble() != (double) valueElement)
                     return false;
-            }
-            else if(tagElement instanceof FloatNBT && valueElement instanceof Float)
-            {
-                if(((FloatNBT) tagElement).getAsFloat() != (float) valueElement)
+            } else if (tagElement instanceof FloatNBT && valueElement instanceof Float) {
+                if (((FloatNBT) tagElement).getAsFloat() != (float) valueElement)
                     return false;
-            }
-            else if(tagElement instanceof LongNBT && valueElement instanceof Long)
-            {
-                if(((LongNBT) tagElement).getAsLong() != (long) valueElement)
+            } else if (tagElement instanceof LongNBT && valueElement instanceof Long) {
+                if (((LongNBT) tagElement).getAsLong() != (long) valueElement)
                     return false;
-            }
-            else if(tagElement instanceof ByteNBT && valueElement instanceof Byte)
-            {
-                if(((ByteNBT) tagElement).getAsByte() != (byte) valueElement)
+            } else if (tagElement instanceof ByteNBT && valueElement instanceof Byte) {
+                if (((ByteNBT) tagElement).getAsByte() != (byte) valueElement)
                     return false;
-            }
-            else if(tagElement instanceof ShortNBT && valueElement instanceof Short)
-            {
-                if(((ShortNBT) tagElement).getAsShort() != (short) valueElement)
+            } else if (tagElement instanceof ShortNBT && valueElement instanceof Short) {
+                if (((ShortNBT) tagElement).getAsShort() != (short) valueElement)
                     return false;
-            }
-            else if(tagElement instanceof CompoundNBT && valueElement instanceof Map)
-            {
+            } else if (tagElement instanceof CompoundNBT && valueElement instanceof Map) {
                 boolean nbtMatch = matchNBT((CompoundNBT) tagElement, (Map<Object, Object>) valueElement);
-                if(!nbtMatch)
+                if (!nbtMatch)
                     return false;
-            }
-            else if(tagElement instanceof ListNBT && valueElement instanceof List)
-            {
+            } else if (tagElement instanceof ListNBT && valueElement instanceof List) {
                 boolean nbtMatch = matchListNBT((ListNBT) tagElement, (List<Object>) valueElement);
-                if(!nbtMatch)
+                if (!nbtMatch)
                     return false;
-            }
-            else
-            {
+            } else {
                 return false;
             }
         }
@@ -439,12 +384,11 @@ public class ResourceFiltering {
 
     @SuppressWarnings("unchecked")
     protected static Predicate<IRecipe<?>> assembleRecipeResultFilter(Map<Object, Object> filterMap) {
-        if(!filterMap.containsKey("result"))
+        if (!filterMap.containsKey("result"))
             return recipe -> true;
 
         Object resultFilter = filterMap.get("result");
-        if(resultFilter instanceof String)
-        {
+        if (resultFilter instanceof String) {
             String resultId = (String) resultFilter;
             ResourceLocation resultLocation = new ResourceLocation(resultId);
             return recipe -> Objects.equals(recipe.getResultItem().getItem().getRegistryName(), resultLocation);

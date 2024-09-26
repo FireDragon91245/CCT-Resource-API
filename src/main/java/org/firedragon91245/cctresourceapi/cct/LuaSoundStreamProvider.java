@@ -25,7 +25,7 @@ public class LuaSoundStreamProvider {
     @LuaFunction
     final public LuaByteStream createByteStream() {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
-        if(base_stream == null)
+        if (base_stream == null)
             return null;
         return new LuaByteStream(base_stream);
     }
@@ -33,7 +33,7 @@ public class LuaSoundStreamProvider {
     @LuaFunction
     final public LuaPcmSigned16SampleStream createPcmSigned16SampleStream() throws LuaException {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
-        if(base_stream == null)
+        if (base_stream == null)
             return null;
         return new LuaPcmSigned16SampleStream(base_stream, false);
     }
@@ -41,7 +41,7 @@ public class LuaSoundStreamProvider {
     @LuaFunction
     final public LuaPcmSigned8SampleStream createPcmSigned8SampleStream() throws LuaException {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
-        if(base_stream == null)
+        if (base_stream == null)
             return null;
         return new LuaPcmSigned8SampleStream(base_stream);
     }

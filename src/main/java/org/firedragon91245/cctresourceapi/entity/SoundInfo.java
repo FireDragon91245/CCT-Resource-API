@@ -22,11 +22,9 @@ public class SoundInfo {
     }
 
     public Stream<String> soundNamesStream() {
-        if(sounds.isA()) {
+        if (sounds.isA()) {
             return Stream.of(sounds.getA());
-        }
-        else
-        {
+        } else {
             return Stream.of(sounds.getB()).map(SoundDef::getName);
         }
     }

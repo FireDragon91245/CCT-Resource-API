@@ -482,7 +482,7 @@ public class ResourceLoading {
             try (JsonReader soundsJson = loadBundledFileJson("bundled_resources/minecraft/sounds.json")) {
                 if (soundEvent.getRegistryName() == null)
                     return null;
-                if(soundsJson == null)
+                if (soundsJson == null)
                     return null;
                 return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
             } catch (IOException ignored) {
@@ -496,7 +496,7 @@ public class ResourceLoading {
                 try (JsonReader soundsJson = loadFileJson(loader, "assets/" + soundId.getNamespace() + "/sounds.json")) {
                     if (soundEvent.getRegistryName() == null)
                         return null;
-                    if(soundsJson == null)
+                    if (soundsJson == null)
                         return null;
                     return loadSpecificJsonKey(soundsJson, soundEvent.getRegistryName().getPath(), SoundInfo.class);
                 } catch (IOException ignored) {
@@ -562,7 +562,7 @@ public class ResourceLoading {
     private static AudioInputStream loadFileSoundStream(URLClassLoader loader, String s) {
         try {
             InputStream soundStream = loader.getResourceAsStream(s);
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {
@@ -594,7 +594,7 @@ public class ResourceLoading {
 
     private static SoundData loadFileSoundData(URLClassLoader loader, String s) {
         try (InputStream soundStream = loader.getResourceAsStream(s)) {
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return soundDataFromAudioStream(s, soundStream);
         } catch (IOException | UnsupportedAudioFileException ignored) {
@@ -644,7 +644,7 @@ public class ResourceLoading {
 
     private static SoundData loadFileBundledSoundData(String s) {
         try (InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s)) {
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return soundDataFromAudioStream(s, soundStream);
         } catch (IOException | UnsupportedAudioFileException e) {
@@ -656,7 +656,7 @@ public class ResourceLoading {
     private static AudioInputStream loadFileBundledSoundStream(String s) {
         try {
             InputStream soundStream = CCT_Resource_API.class.getClassLoader().getResourceAsStream(s);
-            if(soundStream == null)
+            if (soundStream == null)
                 return null;
             return AUDIO_SYSTEM.getAudioInputStream(new BufferedInputStream(soundStream));
         } catch (IOException | UnsupportedAudioFileException e) {

@@ -6,9 +6,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class BlockStateModelVariant {
-    public String model;
-
     final public Map<String, JsonElement> properties;
+    public String model;
 
     public BlockStateModelVariant() {
         this.properties = new HashMap<>();

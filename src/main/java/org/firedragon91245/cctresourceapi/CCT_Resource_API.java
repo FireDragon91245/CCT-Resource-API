@@ -7,13 +7,10 @@ import net.minecraft.util.math.vector.Vector3f;
 import net.minecraftforge.fml.common.Mod;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.firedragon91245.cctresourceapi.cct.ResourceAPI;
 import org.firedragon91245.cctresourceapi.entity.BlockStateModel;
 import org.firedragon91245.cctresourceapi.entity.BlockStateModelVariant;
-import org.firedragon91245.cctresourceapi.cct.ResourceAPI;
 import org.firedragon91245.cctresourceapi.json.*;
-
-import javax.sound.sampled.AudioFileFormat;
-import javax.sound.sampled.AudioSystem;
 
 @Mod("cct_resource_api")
 public class CCT_Resource_API {

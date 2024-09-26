@@ -27,16 +27,14 @@ public class VariantArray<A, B> {
     }
 
     @SuppressWarnings("unchecked")
-    public static <A, B> VariantArray<A, B> ofA(List<A> a)
-    {
+    public static <A, B> VariantArray<A, B> ofA(List<A> a) {
         VariantArray<A, B> variantArray = new VariantArray<>();
         variantArray.a = (A[]) a.toArray();
         return variantArray;
     }
 
     @SuppressWarnings("unchecked")
-    public static <A, B> VariantArray<A, B> ofB(List<B> b)
-    {
+    public static <A, B> VariantArray<A, B> ofB(List<B> b) {
         VariantArray<A, B> variantArray = new VariantArray<>();
         variantArray.b = (B[]) b.toArray();
         return variantArray;

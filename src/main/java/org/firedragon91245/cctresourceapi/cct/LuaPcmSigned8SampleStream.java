@@ -4,7 +4,7 @@ import dan200.computercraft.api.lua.LuaException;
 
 import javax.sound.sampled.AudioInputStream;
 
-public class LuaPcmSigned8SampleStream extends LuaPcmSigned16SampleStream{
+public class LuaPcmSigned8SampleStream extends LuaPcmSigned16SampleStream {
 
     PcmSigned16To8ResampleStream baseResampleStream;
 

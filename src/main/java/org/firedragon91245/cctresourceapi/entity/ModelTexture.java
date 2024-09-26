@@ -15,11 +15,9 @@ public class ModelTexture {
         this.imageBytes = imageBytes;
     }
 
-    public Byte[] boxByteArray(byte[] array)
-    {
+    public Byte[] boxByteArray(byte[] array) {
         Byte[] boxedArray = new Byte[array.length];
-        for(int i = 0; i < array.length; i++)
-        {
+        for (int i = 0; i < array.length; i++) {
             boxedArray[i] = array[i];
         }
         return boxedArray;
@@ -27,9 +25,9 @@ public class ModelTexture {
 
     public HashMap<String, Object> asHashMap() {
         HashMap<String, Object> map = new HashMap<>();
-        if(formatName != null)
+        if (formatName != null)
             map.put("formatName", formatName);
-        if(image != null) {
+        if (image != null) {
             map.put("imageWidth", image.getWidth());
             map.put("imageHeight", image.getHeight());
             Byte[] imageBytesArray = boxByteArray(imageBytes);
