@@ -12,9 +12,11 @@ import java.util.Map;
 public class LuaSoundStreamProvider {
 
     private final String audioLocation;
+    private final ResourceAPI apiInstance;
 
-    public LuaSoundStreamProvider(String audioLocation) {
+    public LuaSoundStreamProvider(String audioLocation, ResourceAPI apiInstance) {
         this.audioLocation = audioLocation;
+        this.apiInstance = apiInstance;
     }
 
     @SuppressWarnings("unused")
@@ -29,7 +31,9 @@ public class LuaSoundStreamProvider {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
         if (base_stream == null)
             return null;
-        return new LuaByteStream(base_stream);
+        LuaByteStream luaByteStream = new LuaByteStream(base_stream);
+        apiInstance.addStreamToClose(luaByteStream);
+        return luaByteStream;
     }
 
     @SuppressWarnings("unused")
@@ -38,7 +42,9 @@ public class LuaSoundStreamProvider {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
         if (base_stream == null)
             return null;
-        return new LuaPcmSigned16SampleStream(base_stream, false);
+        LuaPcmSigned16SampleStream luaPcmSigned16SampleStream = new LuaPcmSigned16SampleStream(base_stream, false);
+        apiInstance.addStreamToClose(luaPcmSigned16SampleStream);
+        return luaPcmSigned16SampleStream;
     }
 
     @SuppressWarnings("unused")
@@ -47,7 +53,9 @@ public class LuaSoundStreamProvider {
         AudioInputStream base_stream = ResourceLoading.loadSoundStream(this.audioLocation);
         if (base_stream == null)
             return null;
-        return new LuaPcmSigned8SampleStream(base_stream);
+        LuaPcmSigned8SampleStream luaPcmSigned8SampleStream = new LuaPcmSigned8SampleStream(base_stream);
+        apiInstance.addStreamToClose(luaPcmSigned8SampleStream);
+        return luaPcmSigned8SampleStream;
     }
 
     @SuppressWarnings("unused")

@@ -9,6 +9,7 @@ public class BlockModel implements IModel {
     public String parent;
     public String gui_light;
     public BlockModelDisplay display;
+
     public BlockModel() {
         this.textures = new HashMap<>();
     }
