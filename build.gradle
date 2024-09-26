@@ -149,7 +149,10 @@ dependencies {
     shade 'com.googlecode.soundlibs:tritonus-share:0.3.7.4'
     shade 'com.googlecode.soundlibs:jorbis:0.0.17.4'
     shade 'com.googlecode.soundlibs:vorbisspi:1.0.3.3'
-    shade 'org.apache.tika:tika-core:2.9.2'
+    shade('org.apache.tika:tika-core:2.9.2') {
+        // exclude group: 'org.slf4j' // 1.16.5 does not use slf4j so need to bundle it for 1.16.5
+        // exclude group: 'commons-io', module: 'commons-io' // 1.16.5 does not use commons-io so need to bundle it for 1.16.5
+    }
 
 
     // Example mod dependency with JEI - using fg.deobf() ensures the dependency is remapped to your development mappings
@@ -180,9 +183,11 @@ shadowJar {
     finalizedBy 'reobfShadowJar'
 
     relocate 'com.jcraft', 'org.firedragon91245.cctresourceapi.jcraft'
-    relocate 'javazoom', 'org.firedragon91245.cctresourceapi.javazoom'
-    relocate 'org.apache', 'org.firedragon91245.cctresourceapi.apache'
+    relocate 'javazoom.spi', 'org.firedragon91245.cctresourceapi.javazoom.spi'
     relocate 'org.tritonus', 'org.firedragon91245.cctresourceapi.tritonus'
+    relocate 'org.slf4j', 'org.firedragon91245.cctresourceapi.slf4j'
+    relocate 'org.apache.commons.io', 'org.firedragon91245.cctresourceapi.apache.commons.io'
+    relocate 'org.apache.tika', 'org.firedragon91245.cctresourceapi.apache.tika'
 }
 
 // This block of code expands all declared replace properties in the specified resource targets.

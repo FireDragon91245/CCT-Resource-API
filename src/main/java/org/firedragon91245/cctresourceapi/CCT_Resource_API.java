@@ -16,6 +16,7 @@ import org.firedragon91245.cctresourceapi.json.*;
 public class CCT_Resource_API {
 
     public static final Logger LOGGER = LogManager.getLogger();
+
     public static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(BlockStateModelVariant.class, new BlockStateModelVariantSerializer())
             .registerTypeAdapter(OneOrMore.class, new OneOrMoreSerializer())
