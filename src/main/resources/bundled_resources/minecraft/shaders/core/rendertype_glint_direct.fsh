@@ -7,7 +7,6 @@ uniform sampler2D Sampler0;
 uniform vec4 ColorModulator;
 uniform float FogStart;
 uniform float FogEnd;
-uniform float GlintAlpha;
 
 in float vertexDistance;
 in vec2 texCoord0;
@@ -19,6 +18,6 @@ void main() {
     if (color.a < 0.1) {
         discard;
     }
-    float fade = linear_fog_fade(vertexDistance, FogStart, FogEnd) * GlintAlpha;
+    float fade = linear_fog_fade(vertexDistance, FogStart, FogEnd);
     fragColor = vec4(color.rgb * fade, color.a);
 }

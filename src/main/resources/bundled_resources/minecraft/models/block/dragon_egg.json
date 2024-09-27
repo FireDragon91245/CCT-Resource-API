@@ -1,4 +1,5 @@
 {   "parent": "block/block",
+    "ambientocclusion": false,
     "textures": {
         "particle": "block/dragon_egg",
         "all": "block/dragon_egg"
